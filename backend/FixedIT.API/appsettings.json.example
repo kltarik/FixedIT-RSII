@@ -1,0 +1,84 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": ""
+  },
+  "SeedData": {
+    "AdminEmail": "",
+    "AdminPassword": "",
+    "DefaultUserPassword": ""
+  },
+  "RabbitMQ": {
+    "Host": "",
+    "Port": 5672,
+    "Username": "",
+    "Password": "",
+    "VirtualHost": "/",
+    "ExchangeName": "fixedit.events",
+    "QueueName": "fixedit.notifications",
+    "RoutingKey": "notification",
+    "DeadLetterExchangeName": "fixedit.events.dlx",
+    "DeadLetterQueueName": "fixedit.notifications.dead-letter",
+    "DeadLetterRoutingKey": "notification.dead-letter",
+    "ConnectionRetrySeconds": 5,
+    "PrefetchCount": 1,
+    "PublishConfirmTimeoutSeconds": 5,
+    "ProcessedMessageCacheSize": 10000
+  },
+  "Jwt": {
+    "Key": "",
+    "Issuer": "FixedIT",
+    "Audience": "FixedITUsers",
+    "ExpiryHours": 24,
+    "RefreshTokenExpiryDays": 30
+  },
+  "Security": {
+    "BCryptWorkFactor": 12
+  },
+  "PayPal": {
+    "BaseUrl": "https://api-m.sandbox.paypal.com/",
+    "ClientId": "",
+    "ClientSecret": "",
+    "WebhookId": "",
+    "ReturnUrl": "http://localhost:3000/payments/success",
+    "CancelUrl": "http://localhost:3000/payments/cancelled",
+    "Currency": "EUR",
+    "RequestTimeoutSeconds": 30
+  },
+  "Smtp": {
+    "Host": "",
+    "Port": 587,
+    "Username": "",
+    "Password": "",
+    "UseSsl": true
+  },
+  "Pagination": {
+    "MaxPageSize": 50,
+    "DefaultPageSize": 10
+  },
+  "Recommendations": {
+    "Seed": 42,
+    "NumberOfIterations": 20,
+    "ApproximationRank": 100,
+    "MinimumTrainingRatings": 5,
+    "RetrainingIntervalHours": 24,
+    "CandidatePoolSize": 200
+  },
+  "Reports": {
+    "CompanyName": "FixedIT",
+    "QuestPdfLicense": "Community",
+    "MaxPdfRows": 500
+  },
+  "FileStorage": {
+    "RootPath": "uploads",
+    "RequestPath": "/uploads",
+    "MaxFileSizeBytes": 5242880,
+    "AllowedImageMimeTypes": [
+      "image/jpeg",
+      "image/png"
+    ]
+  },
+  "AllowedOrigins": [
+    "http://localhost:3000",
+    "http://localhost:5173"
+  ]
+}

@@ -1,0 +1,74 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-CU12-ubuntu-22.04
+    environment:
+      SA_PASSWORD: "${DB_SA_PASSWORD}"
+      ACCEPT_EULA: "Y"
+    ports: ["1433:1433"]
+    volumes: ["sqldata:/var/opt/mssql"]
+
+  rabbitmq:
+    image: rabbitmq:3.13.1-management
+    ports: ["5672:5672", "15672:15672"]
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASS}"
+
+  fixedit-api:
+    build:
+      context: ./backend
+      dockerfile: FixedIT.API/Dockerfile
+    ports: ["5000:8080"]
+    volumes: ["uploads:/app/uploads"]
+    environment:
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=FixedITDb;User Id=sa;Password=${DB_SA_PASSWORD};TrustServerCertificate=True"
+      SeedData__AdminEmail: "${SEED_ADMIN_EMAIL}"
+      SeedData__AdminPassword: "${SEED_ADMIN_PASSWORD}"
+      SeedData__DefaultUserPassword: "${SEED_USER_PASSWORD}"
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: "5672"
+      RabbitMQ__Username: "${RABBITMQ_USER}"
+      RabbitMQ__Password: "${RABBITMQ_PASS}"
+      Jwt__Key: "${JWT_KEY}"
+      Jwt__Issuer: "FixedIT"
+      Jwt__Audience: "FixedITUsers"
+      PayPal__ClientId: "${PAYPAL_CLIENT_ID}"
+      PayPal__ClientSecret: "${PAYPAL_CLIENT_SECRET}"
+      PayPal__BaseUrl: "${PAYPAL_BASE_URL}"
+      PayPal__WebhookId: "${PAYPAL_WEBHOOK_ID}"
+      PayPal__ReturnUrl: "${PAYPAL_RETURN_URL}"
+      PayPal__CancelUrl: "${PAYPAL_CANCEL_URL}"
+      PayPal__Currency: "${PAYPAL_CURRENCY}"
+      PayPal__RequestTimeoutSeconds: "${PAYPAL_TIMEOUT_SECONDS}"
+      Smtp__Host: "${SMTP_HOST}"
+      Smtp__Port: "587"
+      Smtp__Username: "${SMTP_USERNAME}"
+      Smtp__Password: "${SMTP_PASSWORD}"
+      Smtp__UseSsl: "true"
+    depends_on: [sqlserver, rabbitmq]
+
+  fixedit-notifications:
+    build:
+      context: ./backend
+      dockerfile: FixedIT.NotificationService/Dockerfile
+    environment:
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: "5672"
+      RabbitMQ__Username: "${RABBITMQ_USER}"
+      RabbitMQ__Password: "${RABBITMQ_PASS}"
+      Smtp__Host: "${SMTP_HOST}"
+      Smtp__Port: "${SMTP_PORT:-1025}"
+      Smtp__Username: "${SMTP_USERNAME}"
+      Smtp__Password: "${SMTP_PASSWORD}"
+      Smtp__UseSsl: "${SMTP_USE_SSL:-false}"
+      Smtp__FromAddress: "${SMTP_FROM_ADDRESS:-noreply@fixedit.local}"
+      Smtp__FromName: "${SMTP_FROM_NAME:-FixedIT}"
+    depends_on: [rabbitmq, mailhog]
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports: ["1025:1025", "8025:8025"]
+
+volumes:
+  sqldata:
+  uploads:

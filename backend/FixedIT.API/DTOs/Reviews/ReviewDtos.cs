@@ -1,0 +1,28 @@
+using System.ComponentModel.DataAnnotations;
+using FixedIT.API.Constants;
+
+namespace FixedIT.API.DTOs.Reviews;
+
+public sealed class CreateReviewRequest
+{
+    [Range(1, int.MaxValue)]
+    public int ReservationId { get; set; }
+
+    [Range(DatabaseConstants.RatingMinimum, DatabaseConstants.RatingMaximum)]
+    public int Rating { get; set; }
+
+    [Required]
+    [MaxLength(DatabaseConstants.DescriptionMaxLength)]
+    public string Comment { get; set; } = string.Empty;
+}
+
+public sealed record ReviewResponse(
+    int Id,
+    int ReservationId,
+    int ProfessionalProfileId,
+    string ClientFirstName,
+    string ClientLastName,
+    string? ClientProfilePictureUrl,
+    int Rating,
+    string Comment,
+    DateTime CreatedAt);

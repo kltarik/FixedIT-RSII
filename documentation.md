@@ -66,7 +66,7 @@ Copy-Item backend/FixedIT.NotificationService/appsettings.json.example backend/F
 ### 4.1 Docker Compose
 
 ```powershell
-Set-Location C:\Users\TarikK\Desktop\dev\fixedit
+Set-Location C:\Users\TarikK\Desktop\dev\FixedIT-RSII
 docker compose config --quiet
 docker compose up --build -d
 docker compose ps
@@ -150,6 +150,8 @@ Osnovna adresa u Docker okruženju je `http://localhost:5000`. Za zaštićene ru
 | POST | `/api/auth/login` | javno | Prijava i izdavanje access/refresh tokena |
 | POST | `/api/auth/refresh` | refresh token | Rotacija tokena |
 | POST | `/api/auth/logout` | prijavljen | Opoziv aktivnih refresh tokena |
+| POST | `/api/auth/forgot-password` | javno | Slanje vremenski ograničenog koda za reset lozinke |
+| POST | `/api/auth/reset-password` | javno | Postavljanje nove lozinke uz važeći reset kod |
 | GET | `/api/reference-data` | javno | Gradovi i kategorije za forme i filtere |
 
 ### 6.2 Korisnici i profesionalci
@@ -160,7 +162,7 @@ Osnovna adresa u Docker okruženju je `http://localhost:5000`. Za zaštićene ru
 | PUT | `/api/users/profile` | prijavljen | Izmjena ličnih podataka |
 | POST | `/api/users/profile/picture` | prijavljen | JPG/PNG profilna slika uz MIME i magic-byte provjeru |
 | GET | `/api/professionals` | javno | Straničena lista profesionalaca |
-| GET | `/api/professionals/search` | javno | Pretraga po imenu, gradu, kategoriji, ocjeni i satnici |
+| GET | `/api/professionals/search` | javno | Pretraga i SQL sortiranje po ocjeni, cijeni, imenu ili broju završenih poslova |
 | GET | `/api/professionals/{id}` | javno | Detalji profesionalca, kategorije i portfolio |
 | GET | `/api/professionals/my-profile` | profesionalac | Vlastiti profesionalni profil |
 | PUT | `/api/professionals/my-profile` | profesionalac | Izmjena biografije, satnice, iskustva i kategorija |
@@ -179,6 +181,8 @@ Osnovna adresa u Docker okruženju je `http://localhost:5000`. Za zaštićene ru
 | POST | `/api/jobs` | klijent | Kreiranje oglasa |
 | PUT | `/api/jobs/{id}` | klijent/vlasnik | Izmjena otvorenog oglasa |
 | DELETE | `/api/jobs/{id}` | klijent/vlasnik | Brisanje oglasa bez ponuda |
+| POST | `/api/jobs/{id}/images` | klijent/vlasnik | Dodavanje validirane fotografije problema |
+| DELETE | `/api/jobs/{id}/images/{imageId}` | klijent/vlasnik | Brisanje fotografije oglasa |
 | POST | `/api/jobs/{jobId}/offers` | profesionalac | Slanje jedne ponude po oglasu |
 | GET | `/api/jobs/{jobId}/offers` | klijent/vlasnik | Pregled ponuda oglasa |
 | PUT | `/api/jobs/{jobId}/offers/{offerId}/accept` | klijent/vlasnik | Prihvat ponude, zatvaranje oglasa i odbijanje ostalih ponuda |
@@ -189,20 +193,23 @@ Osnovna adresa u Docker okruženju je `http://localhost:5000`. Za zaštićene ru
 | Metoda | Ruta | Pristup | Namjena |
 |---|---|---|---|
 | POST | `/api/reservations` | klijent | Direktna rezervacija profesionalca |
+| GET | `/api/professionals/{id}/available-slots` | javno | Slobodni termini po datumu, kategoriji i trajanju |
+| GET | `/api/reservations/availability/my` | profesionalac | Vlastiti sedmični raspored dostupnosti |
+| PUT | `/api/reservations/availability/my` | profesionalac | Izmjena sedmičnog rasporeda dostupnosti |
 | GET | `/api/reservations` | klijent/profesionalac | Vlastite rezervacije uz filter statusa |
 | GET | `/api/reservations/{id}` | učesnik | Detalji rezervacije |
 | PUT | `/api/reservations/{id}/accept` | profesionalac | `Pending` u `Accepted` |
 | PUT | `/api/reservations/{id}/start` | profesionalac | `Accepted` u `InProgress` |
 | PUT | `/api/reservations/{id}/complete` | profesionalac | `InProgress` u `Completed` |
 | PUT | `/api/reservations/{id}/cancel` | ovlašteni učesnik | Dozvoljeni prijelaz u `Cancelled` uz razlog |
-| POST | `/api/payments/create-order` | klijent | Kreiranje idempotentne PayPal narudžbe |
+| POST | `/api/payments/create-order` | klijent | Kreiranje idempotentne EUR PayPal narudžbe tek nakon završetka posla |
 | POST | `/api/payments/capture/{orderId}` | klijent | Potvrda PayPal naplate |
 | POST | `/api/payments/webhook` | PayPal | Potpisani PayPal webhook događaji |
 | POST | `/api/payments/refund/{paymentId}` | administrator | Refundacija završene uplate |
 | POST | `/api/reviews` | klijent | Jedna recenzija završene rezervacije |
 | GET | `/api/professionals/{professionalId}/reviews` | javno | Straničene recenzije profesionalca |
 
-Stanje rezervacije je strogo: `Pending -> Accepted -> InProgress -> Completed`, uz dozvoljeno otkazivanje prema ulozi i trenutnom statusu. Statusi se ne mogu preskakati.
+Stanje rezervacije je strogo: `Pending -> Accepted -> InProgress -> Completed`, uz dozvoljeno otkazivanje prema ulozi i trenutnom statusu. Profesionalac može otkazati `Accepted` rezervaciju, što pokreće refund postojeće uplate. Svaki odgovor detalja sadrži hronološku historiju statusa. Statusi se ne mogu preskakati.
 
 ### 6.5 Razgovori, obavijesti i preporuke
 
@@ -211,7 +218,7 @@ Stanje rezervacije je strogo: `Pending -> Accepted -> InProgress -> Completed`, 
 | POST | `/api/conversations` | prijavljen | Kreiranje razgovora za rezervaciju ili direktnog razgovora |
 | GET | `/api/conversations` | prijavljen | Vlastiti razgovori |
 | GET | `/api/conversations/{id}/messages` | učesnik | Straničena historija poruka |
-| GET | `/api/notifications` | prijavljen | Nepročitane obavijesti |
+| GET | `/api/notifications` | prijavljen | Sve read/unread obavijesti, najnovije prvo |
 | PUT | `/api/notifications/{id}/read` | vlasnik | Označavanje obavijesti pročitanom |
 | PUT | `/api/notifications/read-all` | prijavljen | Označavanje svih obavijesti pročitanim |
 | GET | `/api/recommendations` | klijent | Personalizovane ili fallback preporuke |
@@ -223,17 +230,25 @@ SignalR endpointi su `/hubs/chat` i `/hubs/notifications`. Chat hub izlaže `Joi
 | Metoda | Ruta | Pristup | Namjena |
 |---|---|---|---|
 | GET | `/api/admin/users` | administrator | Straničeni korisnički nalozi |
+| PUT | `/api/admin/users/{id}` | administrator | Izmjena podataka korisnika |
 | PUT | `/api/admin/users/{id}/activate` | administrator | Aktivacija ili deaktivacija naloga |
 | DELETE | `/api/admin/users/{id}` | administrator | Kontrolisano brisanje naloga |
 | PUT | `/api/admin/professionals/{id}/verification` | administrator | Verifikacija profesionalca |
+| PUT | `/api/admin/professionals/{id}` | administrator | Izmjena profesionalnog profila |
 | GET | `/api/admin/reservations` | administrator | Sve rezervacije |
 | PUT | `/api/admin/reservations/{id}/status` | administrator | Administratorski prijelaz statusa |
-| DELETE | `/api/admin/reviews/{id}` | administrator | Moderacija recenzije |
+| GET | `/api/admin/reviews` | administrator | Straničeni pregled i filter recenzija |
+| DELETE | `/api/admin/reviews/{id}` | administrator | Moderacija recenzije uz obavezan audit razlog |
+| GET/POST/PUT/DELETE | `/api/admin/reference-data/countries` | administrator | CRUD država |
+| GET/POST/PUT/DELETE | `/api/admin/reference-data/cities` | administrator | CRUD gradova |
+| GET/POST/PUT/DELETE | `/api/admin/reference-data/categories` | administrator | CRUD kategorija |
+| GET/PUT | `/api/admin/reference-data/reservation-statuses` | administrator | Pregled i izmjena statusnih šifrarnika |
 | GET | `/api/admin/stats` | administrator | Agregatna statistika platforme |
 | GET | `/api/admin/audit-logs` | administrator | Straničena i filtrirana evidencija aktivnosti |
 | GET | `/api/reports/financial` | administrator/profesionalac | Finansijski podaci po periodu i kategoriji |
 | GET | `/api/reports/financial/pdf` | administrator/profesionalac | QuestPDF dokument istog izvještaja |
 | GET | `/api/reports/professionals/performance` | administrator | Učinak profesionalaca |
+| GET | `/api/reports/professionals/performance/pdf` | administrator | PDF učinka profesionalaca za preuzimanje i ispis |
 
 ## 7. Poslovna logika i sigurnost
 
@@ -243,7 +258,7 @@ SignalR endpointi su `/hubs/chat` i `/hubs/notifications`. Chat hub izlaže `Joi
 - Upload prihvata samo JPG/PNG, provjerava deklarisani MIME tip, ekstenziju, magic bytes i maksimalnu veličinu.
 - PayPal API se poziva preko `IHttpClientFactory`; create/capture/refund tok provjerava iznose i vanjske identifikatore.
 - PayPal webhook se prihvata samo nakon uspješne provjere potpisa; neuspješna provjera vraća 401.
-- RabbitMQ koristi publisher potvrde, durable red, dead-letter red, ograničen prefetch i idempotentnu obradu poruka.
+- RabbitMQ koristi publisher potvrde, durable red, dead-letter red, ograničen prefetch i idempotentnu obradu poruka. Worker ponavlja privremeno neuspjelu dostavu nakon 1, 2, 4 i 8 sekundi prije slanja u DLQ.
 - SignalR isporučuje chat i obavijesti u stvarnom vremenu.
 - Audit filter bilježi POST/PUT/DELETE akcije bez osjetljivog sadržaja zahtjeva.
 - Globalni middleware vraća sigurne bosanske poruke i `traceId`, bez stack tracea.
@@ -264,7 +279,7 @@ Mobilna aplikacija ima onboarding, registraciju/prijavu, početni ekran, pretrag
 
 ### 9.2 Windows administracija
 
-Desktop aplikacija ima prijavu administratora, operativni pregled, korisnike, verifikaciju profesionalaca, oglase, rezervacije, evidenciju aktivnosti i finansijske izvještaje sa PDF izvozom.
+Desktop aplikacija ima prijavu administratora, CRUD referentnih podataka, uređivanje korisnika i profesionalaca, odvojenu verifikaciju i suspenziju, moderaciju recenzija, oglase, rezervacije, evidenciju aktivnosti te dva PDF izvještaja sa preuzimanjem i ispisom.
 
 ![Desktop aplikacija - administratorska prijava](docs/screenshots/desktop-dashboard.png)
 
@@ -290,7 +305,7 @@ flutter test
 Oba release artefakta grade se jednom skriptom:
 
 ```powershell
-Set-Location C:\Users\TarikK\Desktop\dev\fixedit
+Set-Location C:\Users\TarikK\Desktop\dev\FixedIT-RSII
 powershell -ExecutionPolicy Bypass -File scripts/build-release.ps1
 ```
 
@@ -312,9 +327,9 @@ Build direktoriji i binarni fajlovi (`.apk`, `.exe`, `.dll`) ignorisani su i ne 
 1. Registrovati novog klijenta i profesionalca te provjeriti prijavu obje uloge.
 2. Kao klijent kreirati oglas; kao profesionalac poslati ponudu; kao klijent prihvatiti ponudu.
 3. Kreirati direktnu rezervaciju i kao profesionalac je prihvatiti.
-4. Kao klijent kreirati PayPal sandbox narudžbu, odobriti je i potvrditi naplatu.
+4. Profesionalac pokreće i završava rezervaciju; klijent zatim kreira PayPal sandbox narudžbu, odobrava je u aplikaciji i čeka serversku potvrdu naplate.
 5. Učesnici razmjenjuju poruke kroz SignalR chat i primaju obavijesti bez osvježavanja ekrana.
-6. Profesionalac pokreće i završava rezervaciju; klijent ostavlja recenziju.
+6. Klijent ostavlja recenziju, a administrator provjerava moderaciju sa obaveznim razlogom.
 7. Klijent provjerava preporuke na početnom ekranu.
 8. Administrator provjerava audit zapise, korisnike, rezervacije, statistiku, finansijski izvještaj i PDF izvoz.
 

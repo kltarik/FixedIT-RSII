@@ -67,6 +67,18 @@ adb install -r mobilne\fixedit_mobile\build\app\outputs\flutter-apk\app-release.
 
 API adresa je `http://10.0.2.2:5000`, standardna AVD adresa za host računar, i ugrađena je u release build.
 
+Za fizički Android uređaj računar i telefon moraju biti na istoj mreži. APK se tada ponovo gradi sa LAN IPv4 adresom računara:
+
+```powershell
+$pcIp = "192.168.1.10" # zamijeniti stvarnom LAN IPv4 adresom računara
+Set-Location mobilne\fixedit_mobile
+flutter build apk --release "--dart-define=API_BASE_URL=http://${pcIp}:5000"
+adb install -r build\app\outputs\flutter-apk\app-release.apk
+adb shell monkey -p com.example.fixedit_mobile 1
+```
+
+Windows Firewall mora dozvoliti dolazni TCP promet na portu `5000`.
+
 ## Testni nalozi
 
 Sljedeći nalozi automatski se kreiraju pri prvom pokretanju sistema:

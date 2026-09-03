@@ -14,7 +14,8 @@ public sealed class ReservationService(
     IPaginationService paginationService,
     IHttpContextAccessor httpContextAccessor,
     IReservationEventPublisher eventPublisher,
-    INotificationService notificationService) : IReservationService
+    INotificationService notificationService,
+    ILogger<ReservationService> logger) : IReservationService
 {
     private const string LockedProfessionalProfilesSql =
         "SELECT * FROM [ProfessionalProfiles] WITH (UPDLOCK, HOLDLOCK)";
@@ -168,18 +169,40 @@ public sealed class ReservationService(
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        await notificationService.PushAsync(notification, cancellationToken);
-        await eventPublisher.PublishAsync(
-            new ReservationStatusChangedEvent(
-                reservation.Id,
-                clientUserId,
-                professional.UserId,
-                null,
-                ReservationStatus.Pending,
-                now,
-                clientUserId,
-                null),
-            cancellationToken);
+        try
+        {
+            await notificationService.PushAsync(notification, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(
+                exception,
+                "SignalR notification failed after reservation {ReservationId} was committed.",
+                reservation.Id);
+        }
+
+        try
+        {
+            await eventPublisher.PublishAsync(
+                new ReservationStatusChangedEvent(
+                    reservation.Id,
+                    clientUserId,
+                    professional.UserId,
+                    null,
+                    ReservationStatus.Pending,
+                    now,
+                    clientUserId,
+                    null),
+                cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(
+                exception,
+                "RabbitMQ event failed after reservation {ReservationId} was committed.",
+                reservation.Id);
+        }
+
         return await GetByIdAsync(clientUserId, reservation.Id, cancellationToken);
     }
 

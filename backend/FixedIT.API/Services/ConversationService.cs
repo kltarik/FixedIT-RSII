@@ -16,7 +16,8 @@ public sealed class ConversationService(
     AppDbContext db,
     IPaginationService paginationService,
     INotificationService notificationService,
-    INotificationEventPublisher eventPublisher) : IConversationService
+    INotificationEventPublisher eventPublisher,
+    ILogger<ConversationService> logger) : IConversationService
 {
     private static readonly Expression<Func<Message, MessageResponse>> MessageProjection =
         message => new MessageResponse(
@@ -272,23 +273,44 @@ public sealed class ConversationService(
         var preview = message.Content.Length <= 200
             ? message.Content
             : message.Content[..200];
-        await notificationService.CreateAndPushAsync(
-            recipientIds.Select(recipientId => new CreateNotificationCommand(
-                recipientId,
-                $"Nova poruka od {senderName}",
-                preview,
-                NotificationType.Message,
-                message.SentAt)).ToArray(),
-            cancellationToken);
-        await eventPublisher.PublishNewMessageAsync(
-            new NewMessageNotificationEvent(
-                conversationId,
-                message.Id,
-                userId,
-                senderName,
-                message.Content,
-                message.SentAt),
-            cancellationToken);
+        try
+        {
+            await notificationService.CreateAndPushAsync(
+                recipientIds.Select(recipientId => new CreateNotificationCommand(
+                    recipientId,
+                    $"Nova poruka od {senderName}",
+                    preview,
+                    NotificationType.Message,
+                    message.SentAt)).ToArray(),
+                cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(
+                exception,
+                "In-app notification failed after message {MessageId} was saved.",
+                message.Id);
+        }
+
+        try
+        {
+            await eventPublisher.PublishNewMessageAsync(
+                new NewMessageNotificationEvent(
+                    conversationId,
+                    message.Id,
+                    userId,
+                    senderName,
+                    message.Content,
+                    message.SentAt),
+                cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(
+                exception,
+                "RabbitMQ event failed after message {MessageId} was saved.",
+                message.Id);
+        }
 
         return new MessageResponse(
             message.Id,

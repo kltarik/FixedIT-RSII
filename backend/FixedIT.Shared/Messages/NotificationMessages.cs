@@ -6,6 +6,7 @@ namespace FixedIT.Shared.Messages;
 [JsonDerivedType(typeof(ReservationStatusChangedMessage), "reservation-status-changed")]
 [JsonDerivedType(typeof(NewMessageNotificationMessage), "new-chat-message")]
 [JsonDerivedType(typeof(PaymentCompletedMessage), "payment-completed")]
+[JsonDerivedType(typeof(PasswordResetRequestedMessage), "password-reset-requested")]
 public abstract record BaseNotificationMessage(
     Guid MessageId,
     string RecipientUserId,
@@ -57,6 +58,20 @@ public sealed record PaymentCompletedMessage(
     decimal Amount,
     string Currency,
     string PayPalOrderId) : BaseNotificationMessage(
+        MessageId,
+        RecipientUserId,
+        RecipientEmail,
+        RecipientName,
+        OccurredAt);
+
+public sealed record PasswordResetRequestedMessage(
+    Guid MessageId,
+    string RecipientUserId,
+    string RecipientEmail,
+    string RecipientName,
+    DateTime OccurredAt,
+    string Code,
+    DateTime ExpiresAt) : BaseNotificationMessage(
         MessageId,
         RecipientUserId,
         RecipientEmail,

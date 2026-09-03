@@ -22,4 +22,5 @@ public class User : IdentityUser
     public ICollection<AuditLog> AuditLogs { get; set; } = [];
     public ICollection<UserRating> Ratings { get; set; } = [];
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
+    public ICollection<PasswordResetToken> PasswordResetTokens { get; set; } = [];
 }

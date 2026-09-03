@@ -16,6 +16,13 @@ public sealed record PaymentCompletedEvent(
     string PayPalOrderId,
     DateTime CompletedAt);
 
+public sealed record PasswordResetRequestedEvent(
+    string UserId,
+    string Email,
+    string RecipientName,
+    string Code,
+    DateTime ExpiresAt);
+
 public interface INotificationEventPublisher
 {
     Task PublishNewMessageAsync(
@@ -24,5 +31,9 @@ public interface INotificationEventPublisher
 
     Task PublishPaymentCompletedAsync(
         PaymentCompletedEvent message,
+        CancellationToken cancellationToken);
+
+    Task PublishPasswordResetAsync(
+        PasswordResetRequestedEvent message,
         CancellationToken cancellationToken);
 }

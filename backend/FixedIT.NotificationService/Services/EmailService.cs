@@ -68,6 +68,9 @@ public sealed class EmailService(
             PaymentCompletedMessage payment => (
                 $"Završeno plaćanje za rezervaciju #{payment.ReservationId}",
                 $"Plaćanje u iznosu od {payment.Amount.ToString("0.00", CultureInfo.InvariantCulture)} {payment.Currency} uspješno je završeno."),
+            PasswordResetRequestedMessage passwordReset => (
+                "Kod za promjenu FixedIT lozinke",
+                $"Vaš jednokratni kod je: {passwordReset.Code}{Environment.NewLine}{Environment.NewLine}Kod vrijedi do {passwordReset.ExpiresAt:dd.MM.yyyy HH:mm} UTC."),
             _ => throw new InvalidOperationException(
                 $"Tip poruke obavijesti {notification.GetType().Name} nije podržan.")
         };

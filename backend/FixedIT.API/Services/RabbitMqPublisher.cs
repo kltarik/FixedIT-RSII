@@ -88,6 +88,23 @@ public sealed class RabbitMqPublisher(
         Publish(outgoingMessages, cancellationToken);
     }
 
+    public Task PublishPasswordResetAsync(
+        PasswordResetRequestedEvent message,
+        CancellationToken cancellationToken)
+    {
+        Publish(
+            [new PasswordResetRequestedMessage(
+                Guid.NewGuid(),
+                message.UserId,
+                message.Email,
+                message.RecipientName,
+                DateTime.UtcNow,
+                message.Code,
+                message.ExpiresAt)],
+            cancellationToken);
+        return Task.CompletedTask;
+    }
+
     private void Publish(
         IEnumerable<BaseNotificationMessage> messages,
         CancellationToken cancellationToken)

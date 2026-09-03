@@ -42,6 +42,39 @@ class AuthService extends ChangeNotifier {
     'cityId': cityId,
   });
 
+  Future<String> requestPasswordReset(String email) async {
+    final response = await api.call<Json>(
+      () => api.dio.post<Json>(
+        '/api/auth/forgot-password',
+        data: {'email': email.trim()},
+        options: Options(extra: const {'skipRefresh': true}),
+      ),
+    );
+    return jString(
+      response.data ?? const {},
+      'message',
+      'Ako nalog postoji, kod je poslan na email.',
+    );
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    await api.call<void>(
+      () => api.dio.post<void>(
+        '/api/auth/reset-password',
+        data: {
+          'email': email.trim(),
+          'code': code.trim(),
+          'newPassword': newPassword,
+        },
+        options: Options(extra: const {'skipRefresh': true}),
+      ),
+    );
+  }
+
   Future<bool> _authenticate(String path, Json body) async {
     loading = true;
     error = null;

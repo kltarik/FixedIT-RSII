@@ -8,4 +8,6 @@ public interface IAuthService
     Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken);
     Task<AuthResponse> RefreshAsync(string refreshToken, CancellationToken cancellationToken);
     Task LogoutAsync(string userId, CancellationToken cancellationToken);
+    Task RequestPasswordResetAsync(string email, CancellationToken cancellationToken);
+    Task ResetPasswordAsync(ResetPasswordRequest request, CancellationToken cancellationToken);
 }

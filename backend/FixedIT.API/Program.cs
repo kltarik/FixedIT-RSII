@@ -120,7 +120,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services
     .AddIdentityCore<User>(options => options.User.RequireUniqueEmail = true)
     .AddRoles<Role>()
-    .AddEntityFrameworkStores<AppDbContext>();
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders();
 builder.Services.AddScoped<IPasswordHasher<User>, BCryptPasswordHasher>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();

@@ -30,6 +30,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<UserRating> UserRatings => Set<UserRating>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -524,6 +525,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.HasIndex(token => new { token.UserId, token.RevokedAt, token.ExpiresAt });
             entity.HasOne(token => token.User)
                 .WithMany(user => user.RefreshTokens)
+                .HasForeignKey(token => token.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PasswordResetToken>(entity =>
+        {
+            entity.HasQueryFilter(token => token.User.IsActive);
+            entity.Property(token => token.TokenHash).HasMaxLength(64).IsRequired();
+            entity.Property(token => token.CreatedAt).HasColumnType("datetime2");
+            entity.Property(token => token.ExpiresAt).HasColumnType("datetime2");
+            entity.Property(token => token.UsedAt).HasColumnType("datetime2");
+            entity.HasIndex(token => token.TokenHash).IsUnique();
+            entity.HasIndex(token => new { token.UserId, token.ExpiresAt });
+            entity.HasOne(token => token.User)
+                .WithMany(user => user.PasswordResetTokens)
                 .HasForeignKey(token => token.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

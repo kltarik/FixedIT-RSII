@@ -62,6 +62,27 @@ public sealed class AuthController(
         return Ok(response);
     }
 
+    [AllowAnonymous]
+    [HttpPost("forgot-password")]
+    public async Task<ActionResult<ForgotPasswordResponse>> ForgotPassword(
+        ForgotPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        await authService.RequestPasswordResetAsync(request.Email, cancellationToken);
+        return Ok(new ForgotPasswordResponse(
+            "Ako nalog postoji, kod za promjenu lozinke je poslan na email."));
+    }
+
+    [AllowAnonymous]
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(
+        ResetPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        await authService.ResetPasswordAsync(request, cancellationToken);
+        return NoContent();
+    }
+
     [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout(CancellationToken cancellationToken)

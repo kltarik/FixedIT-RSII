@@ -19,7 +19,9 @@ public sealed class AuthService(
     AppDbContext db,
     UserManager<User> userManager,
     IJwtService jwtService,
-    IOptions<JwtOptions> jwtOptions) : IAuthService
+    IOptions<JwtOptions> jwtOptions,
+    INotificationEventPublisher notificationPublisher,
+    ILogger<AuthService> logger) : IAuthService
 {
     private const string InvalidCredentialsMessage = "Email adresa ili lozinka nisu ispravni.";
     private readonly JwtOptions _jwtOptions = jwtOptions.Value;
@@ -129,6 +131,83 @@ public sealed class AuthService(
                 cancellationToken);
     }
 
+    public async Task RequestPasswordResetAsync(
+        string email,
+        CancellationToken cancellationToken)
+    {
+        var normalizedEmail = userManager.NormalizeEmail(email.Trim());
+        var user = await db.Users
+            .IgnoreQueryFilters()
+            .SingleOrDefaultAsync(item => item.NormalizedEmail == normalizedEmail, cancellationToken);
+        if (user is null || !user.IsActive || string.IsNullOrWhiteSpace(user.Email))
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        await db.PasswordResetTokens
+            .Where(token => token.UserId == user.Id && token.UsedAt == null)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(token => token.UsedAt, now),
+                cancellationToken);
+        var code = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+        var token = new PasswordResetToken
+        {
+            UserId = user.Id,
+            TokenHash = HashResetCode(user.Id, code),
+            CreatedAt = now,
+            ExpiresAt = now.AddMinutes(15)
+        };
+        db.PasswordResetTokens.Add(token);
+        await db.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await notificationPublisher.PublishPasswordResetAsync(
+                new PasswordResetRequestedEvent(
+                    user.Id,
+                    user.Email,
+                    $"{user.FirstName} {user.LastName}".Trim(),
+                    code,
+                    token.ExpiresAt),
+                cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Kod za promjenu lozinke nije moguće poslati korisniku {UserId}.", user.Id);
+        }
+    }
+
+    public async Task ResetPasswordAsync(
+        ResetPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var normalizedEmail = userManager.NormalizeEmail(request.Email.Trim());
+        var user = await db.Users
+            .IgnoreQueryFilters()
+            .SingleOrDefaultAsync(item => item.NormalizedEmail == normalizedEmail, cancellationToken)
+            ?? throw new BusinessException("Kod za promjenu lozinke nije ispravan ili je istekao.");
+        var now = DateTime.UtcNow;
+        var hash = HashResetCode(user.Id, request.Code);
+        var token = await db.PasswordResetTokens.SingleOrDefaultAsync(
+            item => item.UserId == user.Id
+                && item.TokenHash == hash
+                && item.UsedAt == null
+                && item.ExpiresAt > now,
+            cancellationToken)
+            ?? throw new BusinessException("Kod za promjenu lozinke nije ispravan ili je istekao.");
+
+        var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+        EnsureSucceeded(await userManager.ResetPasswordAsync(user, resetToken, request.NewPassword));
+        token.UsedAt = now;
+        await db.RefreshTokens
+            .Where(item => item.UserId == user.Id && item.RevokedAt == null)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(item => item.RevokedAt, now),
+                cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     private async Task<AuthResponse> IssueTokensAsync(
         User user,
         CancellationToken cancellationToken)
@@ -180,6 +259,12 @@ public sealed class AuthService(
     private static string HashRefreshToken(string refreshToken)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(refreshToken));
+        return Convert.ToHexString(bytes);
+    }
+
+    private static string HashResetCode(string userId, string code)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes($"{userId}:{code}"));
         return Convert.ToHexString(bytes);
     }
 

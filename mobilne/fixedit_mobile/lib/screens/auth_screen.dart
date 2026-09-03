@@ -5,6 +5,7 @@ import '../app/theme.dart';
 import '../core/models.dart';
 import '../services/auth_service.dart';
 import '../services/mobile_repository.dart';
+import '../widgets/common.dart';
 
 class AuthLanding extends StatefulWidget {
   const AuthLanding({super.key});
@@ -196,11 +197,116 @@ class _LoginFormState extends State<_LoginForm> {
                     )
                   : const Text('Prijavi se'),
             ),
+            TextButton(
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (_) => const _PasswordResetDialog(),
+              ),
+              child: const Text('Zaboravili ste lozinku?'),
+            ),
           ],
         ),
       ),
     );
   }
+}
+
+class _PasswordResetDialog extends StatefulWidget {
+  const _PasswordResetDialog();
+  @override
+  State<_PasswordResetDialog> createState() => _PasswordResetDialogState();
+}
+
+class _PasswordResetDialogState extends State<_PasswordResetDialog> {
+  final email = TextEditingController();
+  final code = TextEditingController();
+  final password = TextEditingController();
+  bool codeSent = false;
+  bool busy = false;
+  String? message;
+
+  @override
+  void dispose() {
+    email.dispose();
+    code.dispose();
+    password.dispose();
+    super.dispose();
+  }
+
+  Future<void> submit() async {
+    setState(() => busy = true);
+    try {
+      final auth = context.read<AuthService>();
+      if (!codeSent) {
+        message = await auth.requestPasswordReset(email.text);
+        if (mounted) setState(() => codeSent = true);
+      } else {
+        await auth.resetPassword(
+          email: email.text,
+          code: code.text,
+          newPassword: password.text,
+        );
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Lozinka je promijenjena. Možete se prijaviti.'),
+            ),
+          );
+        }
+      }
+    } catch (error) {
+      if (mounted) setState(() => message = userError(error));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Promjena lozinke'),
+    content: SizedBox(
+      width: 420,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: email,
+            enabled: !codeSent,
+            onChanged: (_) => setState(() {}),
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(labelText: 'Email'),
+          ),
+          if (codeSent) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: code,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              decoration: const InputDecoration(labelText: 'Kod iz emaila'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: password,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Nova lozinka'),
+            ),
+          ],
+          if (message != null) ...[const SizedBox(height: 12), Text(message!)],
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: busy ? null : () => Navigator.pop(context),
+        child: const Text('Odustani'),
+      ),
+      FilledButton(
+        onPressed: busy || email.text.trim().isEmpty ? null : submit,
+        child: Text(codeSent ? 'Promijeni lozinku' : 'Pošalji kod'),
+      ),
+    ],
+  );
 }
 
 class _RegisterForm extends StatefulWidget {

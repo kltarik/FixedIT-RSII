@@ -64,8 +64,32 @@ public sealed class ProfessionalService(
         PagedRequest request,
         CancellationToken cancellationToken)
     {
+        return await SearchPageAsync(
+            db.ProfessionalProfiles.AsNoTracking(),
+            filters,
+            request,
+            cancellationToken);
+    }
+
+    public Task<PagedResponse<ProfessionalSummaryResponse>> GetAdminPageAsync(
+        ProfessionalSearchRequest filters,
+        PagedRequest request,
+        CancellationToken cancellationToken)
+    {
+        return SearchPageAsync(
+            db.ProfessionalProfiles.IgnoreQueryFilters().AsNoTracking(),
+            filters,
+            request,
+            cancellationToken);
+    }
+
+    private async Task<PagedResponse<ProfessionalSummaryResponse>> SearchPageAsync(
+        IQueryable<ProfessionalProfile> query,
+        ProfessionalSearchRequest filters,
+        PagedRequest request,
+        CancellationToken cancellationToken)
+    {
         var page = paginationService.Normalize(request);
-        var query = db.ProfessionalProfiles.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(filters.Name))
         {

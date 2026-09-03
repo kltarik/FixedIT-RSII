@@ -243,11 +243,18 @@ class AdminRepository {
 
   Future<PagedResult<ProfessionalRecord>> getProfessionals({
     int page = 1,
+    int? cityId,
+    int? categoryId,
   }) async {
     final response = await api.request<Json>(
       () => api.dio.get<Json>(
-        '/api/professionals',
-        queryParameters: {'page': page, 'pageSize': 20},
+        '/api/admin/professionals',
+        queryParameters: {
+          'page': page,
+          'pageSize': 20,
+          'cityId': ?cityId,
+          'categoryId': ?categoryId,
+        },
       ),
     );
     return PagedResult.fromJson(
@@ -290,21 +297,33 @@ class AdminRepository {
     return ProfessionalRecord.fromJson(response.data ?? const {});
   }
 
-  Future<PagedResult<JobRecord>> getJobs({int page = 1}) async {
+  Future<PagedResult<JobRecord>> getJobs({
+    int page = 1,
+    int? cityId,
+    int? categoryId,
+  }) async {
     final response = await api.request<Json>(
       () => api.dio.get<Json>(
-        '/api/jobs',
-        queryParameters: {'page': page, 'pageSize': 20},
+        '/api/jobs/search',
+        queryParameters: {
+          'page': page,
+          'pageSize': 20,
+          'cityId': ?cityId,
+          'categoryId': ?categoryId,
+        },
       ),
     );
     return PagedResult.fromJson(response.data ?? const {}, JobRecord.fromJson);
   }
 
-  Future<PagedResult<ReservationRecord>> getReservations({int page = 1}) async {
+  Future<PagedResult<ReservationRecord>> getReservations({
+    int page = 1,
+    int? status,
+  }) async {
     final response = await api.request<Json>(
       () => api.dio.get<Json>(
         '/api/admin/reservations',
-        queryParameters: {'page': page, 'pageSize': 20},
+        queryParameters: {'page': page, 'pageSize': 20, 'status': ?status},
       ),
     );
     return PagedResult.fromJson(

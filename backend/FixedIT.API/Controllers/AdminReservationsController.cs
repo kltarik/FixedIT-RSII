@@ -17,10 +17,11 @@ public sealed class AdminReservationsController(
 {
     [HttpGet]
     public async Task<ActionResult<PagedResponse<ReservationResponse>>> GetPage(
+        [FromQuery] AdminReservationFilterRequest filters,
         [FromQuery] PagedRequest request,
         CancellationToken cancellationToken)
     {
-        return Ok(await reservationService.GetAdminPageAsync(request, cancellationToken));
+        return Ok(await reservationService.GetAdminPageAsync(filters, request, cancellationToken));
     }
 
     [HttpPut("{id:int}/status")]

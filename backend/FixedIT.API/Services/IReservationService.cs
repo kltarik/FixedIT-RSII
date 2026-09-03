@@ -21,6 +21,7 @@ public interface IReservationService
         CancellationToken cancellationToken);
 
     Task<PagedResponse<ReservationResponse>> GetAdminPageAsync(
+        AdminReservationFilterRequest filters,
         PagedRequest request,
         CancellationToken cancellationToken);
 }

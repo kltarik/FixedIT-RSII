@@ -36,6 +36,12 @@ public sealed class AdminReservationStatusRequest
     public string? CancellationReason { get; set; }
 }
 
+public sealed class AdminReservationFilterRequest
+{
+    [EnumDataType(typeof(ReservationStatus))]
+    public ReservationStatus? Status { get; init; }
+}
+
 public sealed record ReservationResponse(
     int Id,
     string ClientUserId,

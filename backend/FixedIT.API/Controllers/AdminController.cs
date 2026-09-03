@@ -16,6 +16,15 @@ public sealed class AdminController(
     IAdminUserService adminUserService,
     IProfessionalService professionalService) : ControllerBase
 {
+    [HttpGet("professionals")]
+    public async Task<ActionResult<PagedResponse<ProfessionalSummaryResponse>>> GetProfessionals(
+        [FromQuery] ProfessionalSearchRequest filters,
+        [FromQuery] PagedRequest request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await professionalService.GetAdminPageAsync(filters, request, cancellationToken));
+    }
+
     [HttpGet("users")]
     public async Task<ActionResult<PagedResponse<AdminUserResponse>>> GetUsers(
         [FromQuery] PagedRequest request,

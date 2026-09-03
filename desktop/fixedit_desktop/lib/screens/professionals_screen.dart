@@ -18,11 +18,29 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
   int? _cityId;
   int? _categoryId;
   int? _busyId;
+  List<CityRecord> _cities = const [];
+  List<CategoryRecord> _categories = const [];
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    try {
+      final cities = await widget.repository.getCities();
+      final categories = await widget.repository.getCategories();
+      if (mounted) {
+        setState(() {
+          _cities = cities.items;
+          _categories = categories.items;
+        });
+      }
+      await _load();
+    } catch (exception) {
+      if (mounted) setState(() => _error = userError(exception));
+    }
   }
 
   Future<void> _load([int? page]) async {
@@ -32,7 +50,11 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
       _error = null;
     });
     try {
-      final result = await widget.repository.getProfessionals(page: _page);
+      final result = await widget.repository.getProfessionals(
+        page: _page,
+        cityId: _cityId,
+        categoryId: _categoryId,
+      );
       if (mounted) setState(() => _result = result);
     } catch (exception) {
       if (mounted) setState(() => _error = userError(exception));
@@ -188,23 +210,6 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
     if (_result == null) {
       return const LoadingPanel(label: 'Učitavanje profesionalaca...');
     }
-    final cities = {
-      for (final item in _result!.items) item.cityId: item.cityName,
-    };
-    final categories = {
-      for (final item in _result!.items)
-        for (final category in item.categories) category.id: category.name,
-    };
-    final filtered = _result!.items
-        .where(
-          (item) =>
-              (_cityId == null || item.cityId == _cityId) &&
-              (_categoryId == null ||
-                  item.categories.any(
-                    (category) => category.id == _categoryId,
-                  )),
-        )
-        .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -232,14 +237,17 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
                     value: null,
                     child: Text('Svi gradovi'),
                   ),
-                  ...cities.entries.map(
-                    (entry) => DropdownMenuItem(
-                      value: entry.key,
-                      child: Text(entry.value),
+                  ..._cities.map(
+                    (city) => DropdownMenuItem(
+                      value: city.id,
+                      child: Text(city.name),
                     ),
                   ),
                 ],
-                onChanged: (value) => setState(() => _cityId = value),
+                onChanged: (value) {
+                  setState(() => _cityId = value);
+                  _load(1);
+                },
               ),
             ),
             SizedBox(
@@ -252,20 +260,23 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
                     value: null,
                     child: Text('Sve kategorije'),
                   ),
-                  ...categories.entries.map(
-                    (entry) => DropdownMenuItem(
-                      value: entry.key,
-                      child: Text(entry.value),
+                  ..._categories.map(
+                    (category) => DropdownMenuItem(
+                      value: category.id,
+                      child: Text(category.name),
                     ),
                   ),
                 ],
-                onChanged: (value) => setState(() => _categoryId = value),
+                onChanged: (value) {
+                  setState(() => _categoryId = value);
+                  _load(1);
+                },
               ),
             ),
           ],
         ),
         const SizedBox(height: 14),
-        if (filtered.isEmpty)
+        if (_result!.items.isEmpty)
           const Expanded(
             child: EmptyPanel(
               message: 'Nema profesionalaca za odabrane filtere.',
@@ -288,7 +299,7 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
                       DataColumn(label: Text('Akcije')),
                     ],
                     rows: [
-                      for (final professional in filtered)
+                      for (final professional in _result!.items)
                         DataRow(
                           cells: [
                             DataCell(

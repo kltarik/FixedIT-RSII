@@ -23,6 +23,11 @@ public interface IProfessionalService
         bool isVerified,
         CancellationToken cancellationToken);
 
+    Task<PagedResponse<ProfessionalSummaryResponse>> GetAdminPageAsync(
+        ProfessionalSearchRequest filters,
+        PagedRequest request,
+        CancellationToken cancellationToken);
+
     Task<ProfessionalDetailResponse> AdminUpdateAsync(
         int id,
         AdminUpdateProfessionalProfileRequest request,

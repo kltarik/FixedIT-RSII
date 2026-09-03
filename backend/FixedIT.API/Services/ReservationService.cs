@@ -178,13 +178,17 @@ public sealed class ReservationService(
     }
 
     public Task<PagedResponse<ReservationResponse>> GetAdminPageAsync(
+        AdminReservationFilterRequest filters,
         PagedRequest request,
         CancellationToken cancellationToken)
     {
-        return GetPageAsync(
-            db.Reservations.IgnoreQueryFilters().AsNoTracking(),
-            request,
-            cancellationToken);
+        var query = db.Reservations.IgnoreQueryFilters().AsNoTracking();
+        if (filters.Status.HasValue)
+        {
+            query = query.Where(reservation => reservation.Status == filters.Status.Value);
+        }
+
+        return GetPageAsync(query, request, cancellationToken);
     }
 
     private async Task<PagedResponse<ReservationResponse>> GetPageAsync(

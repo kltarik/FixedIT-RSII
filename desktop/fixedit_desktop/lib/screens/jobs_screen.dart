@@ -17,11 +17,29 @@ class _JobsScreenState extends State<JobsScreen> {
   int _page = 1;
   int? _cityId;
   int? _categoryId;
+  List<CityRecord> _cities = const [];
+  List<CategoryRecord> _categories = const [];
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    try {
+      final cities = await widget.repository.getCities();
+      final categories = await widget.repository.getCategories();
+      if (mounted) {
+        setState(() {
+          _cities = cities.items;
+          _categories = categories.items;
+        });
+      }
+      await _load();
+    } catch (exception) {
+      if (mounted) setState(() => _error = userError(exception));
+    }
   }
 
   Future<void> _load([int? page]) async {
@@ -31,7 +49,11 @@ class _JobsScreenState extends State<JobsScreen> {
       _error = null;
     });
     try {
-      final result = await widget.repository.getJobs(page: _page);
+      final result = await widget.repository.getJobs(
+        page: _page,
+        cityId: _cityId,
+        categoryId: _categoryId,
+      );
       if (mounted) setState(() => _result = result);
     } catch (exception) {
       if (mounted) setState(() => _error = userError(exception));
@@ -44,19 +66,6 @@ class _JobsScreenState extends State<JobsScreen> {
     if (_result == null) {
       return const LoadingPanel(label: 'Učitavanje oglasa...');
     }
-    final cities = {
-      for (final item in _result!.items) item.cityId: item.cityName,
-    };
-    final categories = {
-      for (final item in _result!.items) item.categoryId: item.categoryName,
-    };
-    final filtered = _result!.items
-        .where(
-          (item) =>
-              (_cityId == null || item.cityId == _cityId) &&
-              (_categoryId == null || item.categoryId == _categoryId),
-        )
-        .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -84,14 +93,17 @@ class _JobsScreenState extends State<JobsScreen> {
                     value: null,
                     child: Text('Svi gradovi'),
                   ),
-                  ...cities.entries.map(
-                    (entry) => DropdownMenuItem(
-                      value: entry.key,
-                      child: Text(entry.value),
+                  ..._cities.map(
+                    (city) => DropdownMenuItem(
+                      value: city.id,
+                      child: Text(city.name),
                     ),
                   ),
                 ],
-                onChanged: (value) => setState(() => _cityId = value),
+                onChanged: (value) {
+                  setState(() => _cityId = value);
+                  _load(1);
+                },
               ),
             ),
             SizedBox(
@@ -104,20 +116,23 @@ class _JobsScreenState extends State<JobsScreen> {
                     value: null,
                     child: Text('Sve kategorije'),
                   ),
-                  ...categories.entries.map(
-                    (entry) => DropdownMenuItem(
-                      value: entry.key,
-                      child: Text(entry.value),
+                  ..._categories.map(
+                    (category) => DropdownMenuItem(
+                      value: category.id,
+                      child: Text(category.name),
                     ),
                   ),
                 ],
-                onChanged: (value) => setState(() => _categoryId = value),
+                onChanged: (value) {
+                  setState(() => _categoryId = value);
+                  _load(1);
+                },
               ),
             ),
           ],
         ),
         const SizedBox(height: 14),
-        if (filtered.isEmpty)
+        if (_result!.items.isEmpty)
           const Expanded(
             child: EmptyPanel(message: 'Nema oglasa za odabrane filtere.'),
           )
@@ -138,7 +153,7 @@ class _JobsScreenState extends State<JobsScreen> {
                       DataColumn(label: Text('Kreiran')),
                     ],
                     rows: [
-                      for (final job in filtered)
+                      for (final job in _result!.items)
                         DataRow(
                           cells: [
                             DataCell(

@@ -31,7 +31,10 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
       _error = null;
     });
     try {
-      final result = await widget.repository.getReservations(page: _page);
+      final result = await widget.repository.getReservations(
+        page: _page,
+        status: _statusFilter,
+      );
       if (mounted) setState(() => _result = result);
     } catch (exception) {
       if (mounted) setState(() => _error = userError(exception));
@@ -85,9 +88,6 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
     if (_result == null) {
       return const LoadingPanel(label: 'Učitavanje rezervacija...');
     }
-    final filtered = _result!.items
-        .where((item) => _statusFilter == null || item.status == _statusFilter)
-        .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -124,13 +124,16 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
                       child: Text(reservationStatusName(status)),
                     ),
                 ],
-                onChanged: (value) => setState(() => _statusFilter = value),
+                onChanged: (value) {
+                  setState(() => _statusFilter = value);
+                  _load(1);
+                },
               ),
             ),
           ),
         ),
         const SizedBox(height: 14),
-        if (filtered.isEmpty)
+        if (_result!.items.isEmpty)
           const Expanded(
             child: EmptyPanel(message: 'Nema rezervacija za odabrani status.'),
           )
@@ -152,7 +155,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
                       DataColumn(label: Text('Akcija')),
                     ],
                     rows: [
-                      for (final reservation in filtered)
+                      for (final reservation in _result!.items)
                         DataRow(
                           cells: [
                             DataCell(Text('#${reservation.id}')),

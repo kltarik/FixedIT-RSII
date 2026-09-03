@@ -232,6 +232,8 @@ public sealed class ReferenceDataService(
         var inUse = await db.ProfessionalCategories.IgnoreQueryFilters()
                 .AnyAsync(item => item.CategoryId == id, cancellationToken)
             || await db.JobPostings.IgnoreQueryFilters()
+                .AnyAsync(item => item.CategoryId == id, cancellationToken)
+            || await db.Reservations.IgnoreQueryFilters()
                 .AnyAsync(item => item.CategoryId == id, cancellationToken);
         if (inUse)
         {

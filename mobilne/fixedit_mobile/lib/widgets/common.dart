@@ -13,6 +13,7 @@ final money = NumberFormat.currency(
   decimalDigits: 2,
 );
 final shortDate = DateFormat('dd.MM.yyyy');
+final shortTime = DateFormat('HH:mm');
 final dateTime = DateFormat('dd.MM.yyyy HH:mm');
 
 String? resolveNetworkUrl(String? value) {

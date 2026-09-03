@@ -15,6 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ReservationStatusDefinition> ReservationStatusDefinitions => Set<ReservationStatusDefinition>();
     public DbSet<ProfessionalProfile> ProfessionalProfiles => Set<ProfessionalProfile>();
     public DbSet<ProfessionalCategory> ProfessionalCategories => Set<ProfessionalCategory>();
+    public DbSet<ProfessionalAvailability> ProfessionalAvailabilities => Set<ProfessionalAvailability>();
     public DbSet<PortfolioItem> PortfolioItems => Set<PortfolioItem>();
     public DbSet<JobPosting> JobPostings => Set<JobPosting>();
     public DbSet<JobOffer> JobOffers => Set<JobOffer>();
@@ -161,6 +162,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        builder.Entity<ProfessionalAvailability>(entity =>
+        {
+            entity.HasQueryFilter(item => item.ProfessionalProfile.User.IsActive);
+            entity.Property(item => item.StartTime).HasColumnType("time");
+            entity.Property(item => item.EndTime).HasColumnType("time");
+            entity.HasIndex(item => new { item.ProfessionalProfileId, item.DayOfWeek, item.StartTime })
+                .IsUnique();
+            entity.ToTable(table => table.HasCheckConstraint(
+                "CK_ProfessionalAvailabilities_TimeRange",
+                "[StartTime] < [EndTime]"));
+            entity.HasOne(item => item.ProfessionalProfile)
+                .WithMany(profile => profile.Availability)
+                .HasForeignKey(item => item.ProfessionalProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         builder.Entity<PortfolioItem>(entity =>
         {
             entity.HasQueryFilter(item => item.ProfessionalProfile.User.IsActive);
@@ -285,6 +302,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.HasOne(reservation => reservation.ProfessionalProfile)
                 .WithMany(profile => profile.Reservations)
                 .HasForeignKey(reservation => reservation.ProfessionalProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(reservation => reservation.Category)
+                .WithMany(category => category.Reservations)
+                .HasForeignKey(reservation => reservation.CategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(reservation => reservation.StatusDefinition)
                 .WithMany(status => status.Reservations)

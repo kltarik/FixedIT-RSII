@@ -17,4 +17,5 @@ public class ProfessionalProfile
     public ICollection<Reservation> Reservations { get; set; } = [];
     public ICollection<Review> Reviews { get; set; } = [];
     public ICollection<UserRating> UserRatings { get; set; } = [];
+    public ICollection<ProfessionalAvailability> Availability { get; set; } = [];
 }

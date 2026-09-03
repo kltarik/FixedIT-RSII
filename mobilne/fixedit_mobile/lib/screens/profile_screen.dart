@@ -29,6 +29,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final rate = TextEditingController();
   final experience = TextEditingController();
   final Set<int> categories = {};
+  final Set<int> availableDays = {};
   UserProfile? profile;
   Professional? professionalProfile;
   ReferenceData? reference;
@@ -61,11 +62,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         widget.repository.getProfile(),
         widget.repository.getReferenceData(),
         if (widget.professional) widget.repository.getMyProfessionalProfile(),
+        if (widget.professional) widget.repository.getMyAvailability(),
       ];
       final values = await Future.wait(futures);
       final user = values[0] as UserProfile;
       final refs = values[1] as ReferenceData;
       final pro = widget.professional ? values[2] as Professional : null;
+      final availability = widget.professional
+          ? values[3] as List<ProfessionalAvailability>
+          : const <ProfessionalAvailability>[];
       if (!mounted) return;
       setState(() {
         profile = user;
@@ -83,6 +88,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           categories
             ..clear()
             ..addAll(pro.categories.map((item) => item.id));
+          availableDays
+            ..clear()
+            ..addAll(availability.map((item) => item.dayOfWeek));
         }
       });
     } catch (exception) {
@@ -92,7 +100,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> save() async {
     if (!formKey.currentState!.validate()) return;
-    if (widget.professional && categories.isEmpty) {
+    if (widget.professional && (categories.isEmpty || availableDays.isEmpty)) {
       setState(() {});
       return;
     }
@@ -112,6 +120,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           experience: int.parse(experience.text),
           categoryIds: categories.toList(),
         );
+        await widget.repository.saveMyAvailability(availableDays);
       }
       await load();
       if (mounted) {
@@ -290,6 +299,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (categories.isEmpty)
       const Text(
         'Odaberite najmanje jednu kategoriju.',
+        style: TextStyle(color: Colors.red),
+      ),
+    const SizedBox(height: 12),
+    Text(
+      'Radni dani (08:00-17:00)',
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    Wrap(
+      spacing: 8,
+      children: [
+        for (final entry in const {
+          1: 'Pon',
+          2: 'Uto',
+          3: 'Sri',
+          4: 'Čet',
+          5: 'Pet',
+          6: 'Sub',
+          0: 'Ned',
+        }.entries)
+          FilterChip(
+            label: Text(entry.value),
+            selected: availableDays.contains(entry.key),
+            onSelected: (selected) => setState(() {
+              if (selected) {
+                availableDays.add(entry.key);
+              } else {
+                availableDays.remove(entry.key);
+              }
+            }),
+          ),
+      ],
+    ),
+    if (availableDays.isEmpty)
+      const Text(
+        'Odaberite najmanje jedan radni dan.',
         style: TextStyle(color: Colors.red),
       ),
   ];

@@ -203,6 +203,20 @@ public static class SeedData
             }
         }
 
+        if (!await db.ProfessionalAvailabilities.AnyAsync(
+                item => item.ProfessionalProfileId == profile.Id))
+        {
+            db.ProfessionalAvailabilities.AddRange(
+                Enumerable.Range((int)DayOfWeek.Monday, 5)
+                    .Select(day => new ProfessionalAvailability
+                    {
+                        ProfessionalProfileId = profile.Id,
+                        DayOfWeek = (DayOfWeek)day,
+                        StartTime = new TimeOnly(8, 0),
+                        EndTime = new TimeOnly(17, 0)
+                    }));
+        }
+
         await db.SaveChangesAsync();
         return profile;
     }
@@ -222,10 +236,16 @@ public static class SeedData
             if (reservation is null)
             {
                 var scheduledAt = now.AddDays(-seed.DaysAgo);
+                var categoryId = await db.ProfessionalCategories
+                    .Where(item => item.ProfessionalProfileId == professionals[seed.ProfessionalIndex].Id)
+                    .OrderBy(item => item.CategoryId)
+                    .Select(item => item.CategoryId)
+                    .FirstAsync();
                 reservation = new Reservation
                 {
                     ClientUserId = clients[seed.ClientIndex].Id,
                     ProfessionalProfileId = professionals[seed.ProfessionalIndex].Id,
+                    CategoryId = categoryId,
                     ServiceDescription = seed.ServiceDescription,
                     ScheduledAt = scheduledAt,
                     DurationMinutes = SeedDataConstants.DefaultDurationMinutes,

@@ -24,4 +24,18 @@ public interface IReservationService
         AdminReservationFilterRequest filters,
         PagedRequest request,
         CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<AvailableSlotResponse>> GetAvailableSlotsAsync(
+        int professionalProfileId,
+        AvailableSlotsRequest request,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<ProfessionalAvailabilityResponse>> GetMyAvailabilityAsync(
+        string userId,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<ProfessionalAvailabilityResponse>> SaveMyAvailabilityAsync(
+        string userId,
+        SaveProfessionalAvailabilityRequest request,
+        CancellationToken cancellationToken);
 }

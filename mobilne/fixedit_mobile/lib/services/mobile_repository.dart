@@ -175,6 +175,7 @@ class MobileRepository {
 
   Future<Reservation> createReservation(
     int professionalId,
+    int categoryId,
     String description,
     DateTime scheduledAt,
     int duration,
@@ -184,6 +185,7 @@ class MobileRepository {
         '/api/reservations',
         data: {
           'professionalProfileId': professionalId,
+          'categoryId': categoryId,
           'serviceDescription': description.trim(),
           'scheduledAt': scheduledAt.toUtc().toIso8601String(),
           'durationMinutes': duration,
@@ -191,6 +193,62 @@ class MobileRepository {
       ),
     );
     return Reservation.fromJson(r.data ?? const {});
+  }
+
+  Future<List<AvailableSlot>> getAvailableSlots({
+    required int professionalId,
+    required int categoryId,
+    required DateTime date,
+    required int durationMinutes,
+  }) async {
+    final response = await api.call<List<dynamic>>(
+      () => api.dio.get<List<dynamic>>(
+        '/api/professionals/$professionalId/available-slots',
+        queryParameters: {
+          'date':
+              '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
+          'categoryId': categoryId,
+          'durationMinutes': durationMinutes,
+        },
+      ),
+    );
+    return (response.data ?? const [])
+        .whereType<Map>()
+        .map((item) => AvailableSlot.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
+  Future<List<ProfessionalAvailability>> getMyAvailability() async {
+    final response = await api.call<List<dynamic>>(
+      () => api.dio.get<List<dynamic>>('/api/reservations/availability/my'),
+    );
+    return (response.data ?? const [])
+        .whereType<Map>()
+        .map(
+          (item) => ProfessionalAvailability.fromJson(
+            Map<String, dynamic>.from(item),
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> saveMyAvailability(Set<int> days) async {
+    await api.call<List<dynamic>>(
+      () => api.dio.put<List<dynamic>>(
+        '/api/reservations/availability/my',
+        data: {
+          'periods': days
+              .map(
+                (day) => {
+                  'dayOfWeek': day,
+                  'startTime': '08:00:00',
+                  'endTime': '17:00:00',
+                },
+              )
+              .toList(),
+        },
+      ),
+    );
   }
 
   Future<Paged<Reservation>> getReservations({int page = 1}) async {

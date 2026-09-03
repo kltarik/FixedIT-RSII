@@ -17,6 +17,8 @@ internal static class ReservationProjection
             reservation.ProfessionalProfile.UserId,
             reservation.ProfessionalProfile.User.FirstName,
             reservation.ProfessionalProfile.User.LastName,
+            reservation.CategoryId,
+            reservation.Category.Name,
             reservation.ServiceDescription,
             reservation.ScheduledAt,
             reservation.DurationMinutes,

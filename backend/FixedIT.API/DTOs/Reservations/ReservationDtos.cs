@@ -9,6 +9,9 @@ public sealed class CreateReservationRequest
     [Range(1, int.MaxValue)]
     public int ProfessionalProfileId { get; set; }
 
+    [Range(1, int.MaxValue)]
+    public int CategoryId { get; set; }
+
     [Required]
     [MaxLength(DatabaseConstants.DescriptionMaxLength)]
     public string ServiceDescription { get; set; } = string.Empty;
@@ -51,6 +54,8 @@ public sealed record ReservationResponse(
     string ProfessionalUserId,
     string ProfessionalFirstName,
     string ProfessionalLastName,
+    int CategoryId,
+    string CategoryName,
     string ServiceDescription,
     DateTime ScheduledAt,
     int DurationMinutes,
@@ -61,3 +66,48 @@ public sealed record ReservationResponse(
     PaymentStatus? PaymentStatus,
     DateTime CreatedAt,
     DateTime UpdatedAt);
+
+public sealed class AvailableSlotsRequest
+{
+    public DateOnly Date { get; init; }
+
+    [Range(1, int.MaxValue)]
+    public int CategoryId { get; init; }
+
+    [Range(30, 480)]
+    public int DurationMinutes { get; init; } = 60;
+}
+
+public sealed record AvailableSlotResponse(DateTime StartUtc, DateTime EndUtc);
+
+public sealed class SaveProfessionalAvailabilityRequest : IValidatableObject
+{
+    [MinLength(1)]
+    public ProfessionalAvailabilityInput[] Periods { get; set; } = [];
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (Periods.Any(period => period.StartTime >= period.EndTime))
+        {
+            yield return new ValidationResult(
+                "Početak dostupnosti mora biti prije završetka.",
+                [nameof(Periods)]);
+        }
+    }
+}
+
+public sealed class ProfessionalAvailabilityInput
+{
+    [EnumDataType(typeof(DayOfWeek))]
+    public DayOfWeek DayOfWeek { get; set; }
+
+    public TimeOnly StartTime { get; set; }
+
+    public TimeOnly EndTime { get; set; }
+}
+
+public sealed record ProfessionalAvailabilityResponse(
+    int Id,
+    DayOfWeek DayOfWeek,
+    TimeOnly StartTime,
+    TimeOnly EndTime);

@@ -251,6 +251,8 @@ class JobOffer {
     required this.professionalId,
     required this.professionalUserId,
     required this.professionalName,
+    required this.categoryId,
+    required this.categoryName,
     required this.message,
     required this.price,
     required this.status,
@@ -261,6 +263,8 @@ class JobOffer {
   final int professionalId;
   final String professionalUserId;
   final String professionalName;
+  final int categoryId;
+  final String categoryName;
   final String message;
   final double price;
   final int status;
@@ -273,11 +277,38 @@ class JobOffer {
     professionalName:
         '${jString(j, 'professionalFirstName')} ${jString(j, 'professionalLastName')}'
             .trim(),
+    categoryId: jInt(j, 'categoryId'),
+    categoryName: jString(j, 'categoryName'),
     message: jString(j, 'message'),
     price: jDouble(j, 'proposedPrice'),
     status: jInt(j, 'status'),
     rating: jDouble(j, 'professionalAverageRating'),
   );
+}
+
+class AvailableSlot {
+  const AvailableSlot(this.start, this.end);
+  final DateTime start;
+  final DateTime end;
+  factory AvailableSlot.fromJson(Json json) =>
+      AvailableSlot(jDate(json, 'startUtc'), jDate(json, 'endUtc'));
+}
+
+class ProfessionalAvailability {
+  const ProfessionalAvailability({
+    required this.dayOfWeek,
+    required this.startTime,
+    required this.endTime,
+  });
+  final int dayOfWeek;
+  final String startTime;
+  final String endTime;
+  factory ProfessionalAvailability.fromJson(Json json) =>
+      ProfessionalAvailability(
+        dayOfWeek: jInt(json, 'dayOfWeek'),
+        startTime: jString(json, 'startTime'),
+        endTime: jString(json, 'endTime'),
+      );
 }
 
 class Reservation {

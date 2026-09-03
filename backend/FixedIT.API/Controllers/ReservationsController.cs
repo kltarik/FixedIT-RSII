@@ -28,6 +28,41 @@ public sealed class ReservationsController(
         return CreatedAtAction(nameof(GetById), new { id = response.Id }, response);
     }
 
+    [AllowAnonymous]
+    [HttpGet("/api/professionals/{professionalId:int}/available-slots")]
+    public async Task<ActionResult<IReadOnlyCollection<AvailableSlotResponse>>> GetAvailableSlots(
+        int professionalId,
+        [FromQuery] AvailableSlotsRequest request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await reservationService.GetAvailableSlotsAsync(
+            professionalId,
+            request,
+            cancellationToken));
+    }
+
+    [Authorize(Roles = RoleNames.Professional)]
+    [HttpGet("availability/my")]
+    public async Task<ActionResult<IReadOnlyCollection<ProfessionalAvailabilityResponse>>> GetMyAvailability(
+        CancellationToken cancellationToken)
+    {
+        return Ok(await reservationService.GetMyAvailabilityAsync(
+            User.GetUserId(),
+            cancellationToken));
+    }
+
+    [Authorize(Roles = RoleNames.Professional)]
+    [HttpPut("availability/my")]
+    public async Task<ActionResult<IReadOnlyCollection<ProfessionalAvailabilityResponse>>> SaveMyAvailability(
+        SaveProfessionalAvailabilityRequest request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await reservationService.SaveMyAvailabilityAsync(
+            User.GetUserId(),
+            request,
+            cancellationToken));
+    }
+
     [Authorize(Roles = RoleNames.Client + "," + RoleNames.Professional)]
     [HttpGet]
     public async Task<ActionResult<PagedResponse<ReservationResponse>>> GetMine(

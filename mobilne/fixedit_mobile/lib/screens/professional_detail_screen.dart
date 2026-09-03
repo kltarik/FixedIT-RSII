@@ -181,12 +181,16 @@ class _ProfessionalDetailScreenState extends State<ProfessionalDetailScreen> {
     final result = await showModalBottomSheet<_ReservationInput>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _ReservationForm(rate: p.hourlyRate),
+      builder: (_) => _ReservationForm(
+        repository: context.read<MobileRepository>(),
+        professional: p,
+      ),
     );
     if (result == null || !mounted) return;
     try {
       final created = await context.read<MobileRepository>().createReservation(
         p.id,
+        result.categoryId,
         result.description,
         result.scheduledAt,
         result.duration,
@@ -204,15 +208,25 @@ class _ProfessionalDetailScreenState extends State<ProfessionalDetailScreen> {
 }
 
 class _ReservationInput {
-  const _ReservationInput(this.description, this.scheduledAt, this.duration);
+  const _ReservationInput(
+    this.categoryId,
+    this.description,
+    this.scheduledAt,
+    this.duration,
+  );
+  final int categoryId;
   final String description;
   final DateTime scheduledAt;
   final int duration;
 }
 
 class _ReservationForm extends StatefulWidget {
-  const _ReservationForm({required this.rate});
-  final double rate;
+  const _ReservationForm({
+    required this.repository,
+    required this.professional,
+  });
+  final MobileRepository repository;
+  final Professional professional;
   @override
   State<_ReservationForm> createState() => _ReservationFormState();
 }
@@ -221,8 +235,40 @@ class _ReservationFormState extends State<_ReservationForm> {
   final key = GlobalKey<FormState>();
   final description = TextEditingController();
   DateTime? date;
-  TimeOfDay? time;
+  AvailableSlot? slot;
+  List<AvailableSlot> slots = const [];
+  late int categoryId;
   int duration = 60;
+  bool loadingSlots = false;
+
+  @override
+  void initState() {
+    super.initState();
+    categoryId = widget.professional.categories.first.id;
+  }
+
+  Future<void> loadSlots() async {
+    if (date == null) return;
+    setState(() {
+      loadingSlots = true;
+      slots = const [];
+      slot = null;
+    });
+    try {
+      final result = await widget.repository.getAvailableSlots(
+        professionalId: widget.professional.id,
+        categoryId: categoryId,
+        date: date!,
+        durationMinutes: duration,
+      );
+      if (mounted) setState(() => slots = result);
+    } catch (error) {
+      if (mounted) await showFailure(context, error);
+    } finally {
+      if (mounted) setState(() => loadingSlots = false);
+    }
+  }
+
   @override
   void dispose() {
     description.dispose();
@@ -255,6 +301,23 @@ class _ReservationFormState extends State<_ReservationForm> {
                 (v?.trim().isEmpty ?? true) ? 'Opis je obavezan.' : null,
           ),
           const SizedBox(height: 12),
+          DropdownButtonFormField<int>(
+            initialValue: categoryId,
+            decoration: const InputDecoration(labelText: 'Kategorija usluge'),
+            items: widget.professional.categories
+                .map(
+                  (category) => DropdownMenuItem(
+                    value: category.id,
+                    child: Text(category.name),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              setState(() => categoryId = value ?? categoryId);
+              loadSlots();
+            },
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -267,33 +330,22 @@ class _ReservationFormState extends State<_ReservationForm> {
                       initialDate:
                           date ?? DateTime.now().add(const Duration(days: 1)),
                     );
-                    if (value != null) setState(() => date = value);
+                    if (value != null) {
+                      setState(() => date = value);
+                      await loadSlots();
+                    }
                   },
                   icon: const Icon(Icons.calendar_month),
                   label: Text(date == null ? 'Datum' : shortDate.format(date!)),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final value = await showTimePicker(
-                      context: context,
-                      initialTime: time ?? const TimeOfDay(hour: 10, minute: 0),
-                    );
-                    if (value != null) setState(() => time = value);
-                  },
-                  icon: const Icon(Icons.schedule),
-                  label: Text(time?.format(context) ?? 'Vrijeme'),
-                ),
-              ),
             ],
           ),
-          if (date == null || time == null)
+          if (date == null)
             const Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Datum i vrijeme su obavezni.',
+                'Datum je obavezan.',
                 style: TextStyle(color: Colors.red),
               ),
             ),
@@ -306,29 +358,53 @@ class _ReservationFormState extends State<_ReservationForm> {
                   (e) => DropdownMenuItem(value: e, child: Text('$e minuta')),
                 )
                 .toList(),
-            onChanged: (v) => setState(() => duration = v ?? duration),
+            onChanged: (value) {
+              setState(() => duration = value ?? duration);
+              loadSlots();
+            },
           ),
           const SizedBox(height: 10),
-          Text('Procjena: ${money.format(widget.rate * duration / 60)} KM'),
+          if (loadingSlots)
+            const LinearProgressIndicator()
+          else if (date != null && slots.isEmpty)
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Nema slobodnih termina za odabrani datum.'),
+            )
+          else if (slots.isNotEmpty)
+            DropdownButtonFormField<AvailableSlot>(
+              initialValue: slot,
+              decoration: const InputDecoration(labelText: 'Slobodan termin'),
+              items: slots
+                  .map(
+                    (item) => DropdownMenuItem(
+                      value: item,
+                      child: Text(shortTime.format(item.start)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) => setState(() => slot = value),
+              validator: (value) =>
+                  value == null ? 'Odaberite slobodan termin.' : null,
+            ),
+          const SizedBox(height: 10),
+          Text(
+            'Procjena: ${money.format(widget.professional.hourlyRate * duration / 60)} KM',
+          ),
           const SizedBox(height: 16),
           FilledButton(
             onPressed: () {
               if (!key.currentState!.validate() ||
                   date == null ||
-                  time == null) {
+                  slot == null) {
                 return;
               }
               Navigator.pop(
                 context,
                 _ReservationInput(
+                  categoryId,
                   description.text.trim(),
-                  DateTime(
-                    date!.year,
-                    date!.month,
-                    date!.day,
-                    time!.hour,
-                    time!.minute,
-                  ),
+                  slot!.start,
                   duration,
                 ),
               );

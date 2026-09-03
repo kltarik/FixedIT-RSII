@@ -56,7 +56,8 @@ public sealed class JobOfferService(
         }
 
         var professionalProfileId = await db.ProfessionalProfiles
-            .Where(profile => profile.UserId == professionalUserId)
+            .Where(profile => profile.UserId == professionalUserId
+                && profile.IsVerified)
             .Select(profile => (int?)profile.Id)
             .SingleOrDefaultAsync(cancellationToken)
             ?? throw new NotFoundException("Profil profesionalca nije pronađen.");

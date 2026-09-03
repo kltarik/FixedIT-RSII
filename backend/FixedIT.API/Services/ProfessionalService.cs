@@ -40,7 +40,9 @@ public sealed class ProfessionalService(
         CancellationToken cancellationToken)
     {
         var page = paginationService.Normalize(request);
-        var query = db.ProfessionalProfiles.AsNoTracking();
+        var query = db.ProfessionalProfiles
+            .AsNoTracking()
+            .Where(profile => profile.IsVerified);
         var total = await query.CountAsync(cancellationToken);
         var items = await query
             .OrderByDescending(profile => profile.AverageRating)
@@ -65,7 +67,9 @@ public sealed class ProfessionalService(
         CancellationToken cancellationToken)
     {
         return await SearchPageAsync(
-            db.ProfessionalProfiles.AsNoTracking(),
+            db.ProfessionalProfiles
+                .AsNoTracking()
+                .Where(profile => profile.IsVerified),
             filters,
             request,
             cancellationToken);
@@ -141,7 +145,7 @@ public sealed class ProfessionalService(
         CancellationToken cancellationToken)
     {
         return GetDetailAsync(
-            profile => profile.Id == id,
+            profile => profile.Id == id && profile.IsVerified,
             "Profil profesionalca nije pronađen.",
             cancellationToken);
     }
@@ -158,7 +162,10 @@ public sealed class ProfessionalService(
         profile.IsVerified = isVerified;
         await db.SaveChangesAsync(cancellationToken);
 
-        return await GetByIdAsync(profile.Id, cancellationToken);
+        return await GetDetailAsync(
+            item => item.Id == profile.Id,
+            "Profil profesionalca nije pronađen.",
+            cancellationToken);
     }
 
     public async Task<ProfessionalDetailResponse> AdminUpdateAsync(
@@ -176,7 +183,10 @@ public sealed class ProfessionalService(
             request.YearsOfExperience,
             request.CategoryIds,
             cancellationToken);
-        return await GetByIdAsync(profile.Id, cancellationToken);
+        return await GetDetailAsync(
+            item => item.Id == profile.Id,
+            "Profil profesionalca nije pronađen.",
+            cancellationToken);
     }
 
     public Task<ProfessionalDetailResponse> GetMyProfileAsync(
@@ -205,7 +215,7 @@ public sealed class ProfessionalService(
             request.CategoryIds,
             cancellationToken);
 
-        return await GetByIdAsync(profile.Id, cancellationToken);
+        return await GetMyProfileAsync(userId, cancellationToken);
     }
 
     private async Task UpdateProfileValuesAsync(

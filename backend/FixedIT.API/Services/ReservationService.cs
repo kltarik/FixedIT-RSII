@@ -52,7 +52,8 @@ public sealed class ReservationService(
             .FromSqlRaw(LockedProfessionalProfilesSql)
             .Include(profile => profile.User)
             .SingleOrDefaultAsync(
-                profile => profile.Id == request.ProfessionalProfileId,
+                profile => profile.Id == request.ProfessionalProfileId
+                    && profile.IsVerified,
                 cancellationToken)
             ?? throw new NotFoundException("Profil profesionalca nije pronađen.");
         if (professional.UserId == clientUserId)
@@ -238,6 +239,7 @@ public sealed class ReservationService(
 
         var supportsCategory = await db.ProfessionalCategories.AnyAsync(
             item => item.ProfessionalProfileId == professionalProfileId
+                && item.ProfessionalProfile.IsVerified
                 && item.CategoryId == request.CategoryId,
             cancellationToken);
         if (!supportsCategory)

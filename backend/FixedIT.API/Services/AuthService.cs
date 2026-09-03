@@ -89,7 +89,9 @@ public sealed class AuthService(
         CancellationToken cancellationToken)
     {
         var user = await userManager.FindByEmailAsync(request.Email.Trim());
-        if (user is null || !await userManager.CheckPasswordAsync(user, request.Password))
+        if (user is null
+            || !user.IsActive
+            || !await userManager.CheckPasswordAsync(user, request.Password))
         {
             throw new UnauthorizedException(InvalidCredentialsMessage);
         }
@@ -110,7 +112,10 @@ public sealed class AuthService(
             .Include(token => token.User)
             .SingleOrDefaultAsync(token => token.TokenHash == tokenHash, cancellationToken);
         var now = DateTime.UtcNow;
-        if (storedToken is null || storedToken.RevokedAt.HasValue || storedToken.ExpiresAt <= now)
+        if (storedToken is null
+            || !storedToken.User.IsActive
+            || storedToken.RevokedAt.HasValue
+            || storedToken.ExpiresAt <= now)
         {
             throw new UnauthorizedException("Token za obnovu prijave nije ispravan ili je istekao.");
         }
@@ -187,6 +192,10 @@ public sealed class AuthService(
             .IgnoreQueryFilters()
             .SingleOrDefaultAsync(item => item.NormalizedEmail == normalizedEmail, cancellationToken)
             ?? throw new BusinessException("Kod za promjenu lozinke nije ispravan ili je istekao.");
+        if (!user.IsActive)
+        {
+            throw new BusinessException("Kod za promjenu lozinke nije ispravan ili je istekao.");
+        }
         var now = DateTime.UtcNow;
         var hash = HashResetCode(user.Id, request.Code);
         var token = await db.PasswordResetTokens.SingleOrDefaultAsync(

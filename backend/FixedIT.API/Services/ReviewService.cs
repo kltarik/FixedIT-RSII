@@ -119,7 +119,9 @@ public sealed class ReviewService(
         CancellationToken cancellationToken)
     {
         if (!await db.ProfessionalProfiles.AnyAsync(
-                profile => profile.Id == professionalProfileId && profile.IsVerified,
+                profile => profile.Id == professionalProfileId
+                    && profile.IsVerified
+                    && profile.User.IsActive,
                 cancellationToken))
         {
             throw new NotFoundException("Profil profesionalca nije pronađen.");

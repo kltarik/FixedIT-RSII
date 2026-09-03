@@ -26,7 +26,7 @@ public sealed class RecommendationQueryService(
         var page = paginationService.Normalize(request);
         var candidates = await db.ProfessionalProfiles
             .AsNoTracking()
-            .Where(profile => profile.IsVerified)
+            .Where(profile => profile.IsVerified && profile.User.IsActive)
             .OrderByDescending(profile => profile.AverageRating)
             .ThenBy(profile => profile.Id)
             .Take(_options.CandidatePoolSize)

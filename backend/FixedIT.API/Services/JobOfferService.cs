@@ -57,7 +57,8 @@ public sealed class JobOfferService(
 
         var professionalProfileId = await db.ProfessionalProfiles
             .Where(profile => profile.UserId == professionalUserId
-                && profile.IsVerified)
+                && profile.IsVerified
+                && profile.User.IsActive)
             .Select(profile => (int?)profile.Id)
             .SingleOrDefaultAsync(cancellationToken)
             ?? throw new NotFoundException("Profil profesionalca nije pronađen.");
@@ -182,6 +183,16 @@ public sealed class JobOfferService(
 
         if (requestedStatus == JobOfferStatus.Accepted)
         {
+            var canAcceptProfessional = await db.ProfessionalProfiles
+                .AnyAsync(profile => profile.Id == target.ProfessionalProfileId
+                    && profile.IsVerified
+                    && profile.User.IsActive, cancellationToken);
+            if (!canAcceptProfessional)
+            {
+                throw new BusinessException(
+                    "Ponudu deaktiviranog ili neverifikovanog profesionalca nije moguće prihvatiti.");
+            }
+
             if (job.Status != JobPostingStatus.Open)
             {
                 throw new BusinessException("Ponudu je moguće prihvatiti samo za otvoren oglas.");

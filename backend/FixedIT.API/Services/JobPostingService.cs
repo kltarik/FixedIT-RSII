@@ -41,7 +41,12 @@ public sealed class JobPostingService(
         PagedRequest request,
         CancellationToken cancellationToken)
     {
-        return GetPageAsync(db.JobPostings.AsNoTracking(), request, cancellationToken);
+        return GetPageAsync(
+            db.JobPostings
+                .AsNoTracking()
+                .Where(job => job.ClientUser.IsActive),
+            request,
+            cancellationToken);
     }
 
     public async Task<JobPostingDetailResponse> GetByIdAsync(
@@ -50,7 +55,7 @@ public sealed class JobPostingService(
     {
         var job = await db.JobPostings
             .AsNoTracking()
-            .Where(item => item.Id == id)
+            .Where(item => item.Id == id && item.ClientUser.IsActive)
             .Select(item => new
             {
                 item.Id,

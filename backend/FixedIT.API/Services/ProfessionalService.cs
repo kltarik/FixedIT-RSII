@@ -42,7 +42,7 @@ public sealed class ProfessionalService(
         var page = paginationService.Normalize(request);
         var query = db.ProfessionalProfiles
             .AsNoTracking()
-            .Where(profile => profile.IsVerified);
+            .Where(profile => profile.IsVerified && profile.User.IsActive);
         var total = await query.CountAsync(cancellationToken);
         var items = await query
             .OrderByDescending(profile => profile.AverageRating)
@@ -69,7 +69,7 @@ public sealed class ProfessionalService(
         return await SearchPageAsync(
             db.ProfessionalProfiles
                 .AsNoTracking()
-                .Where(profile => profile.IsVerified),
+                .Where(profile => profile.IsVerified && profile.User.IsActive),
             filters,
             request,
             cancellationToken);
@@ -145,7 +145,8 @@ public sealed class ProfessionalService(
         CancellationToken cancellationToken)
     {
         return GetDetailAsync(
-            profile => profile.Id == id && profile.IsVerified,
+            profile => profile.Id
+                == id && profile.IsVerified && profile.User.IsActive,
             "Profil profesionalca nije pronađen.",
             cancellationToken);
     }

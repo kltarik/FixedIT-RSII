@@ -154,7 +154,9 @@ public sealed class RabbitMqPublisher(
         var uniqueIds = userIds.Distinct(StringComparer.Ordinal).ToArray();
         return await db.Users
             .AsNoTracking()
-            .Where(user => uniqueIds.Contains(user.Id) && user.Email != null)
+            .Where(user => uniqueIds.Contains(user.Id)
+                && user.IsActive
+                && user.Email != null)
             .Select(user => new NotificationRecipient(
                 user.Id,
                 user.Email!,

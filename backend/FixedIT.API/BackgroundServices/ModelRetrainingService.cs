@@ -43,7 +43,9 @@ public sealed class ModelRetrainingService(
             var reservationSignals = await db.Reservations
                 .AsNoTracking()
                 .Where(reservation => reservation.Status != ReservationStatus.Cancelled
-                    && reservation.ProfessionalProfile.IsVerified)
+                    && reservation.ClientUser.IsActive
+                    && reservation.ProfessionalProfile.IsVerified
+                    && reservation.ProfessionalProfile.User.IsActive)
                 .OrderBy(reservation => reservation.Id)
                 .Select(reservation => new UserRatingData
                 {
@@ -55,7 +57,9 @@ public sealed class ModelRetrainingService(
             var profileViewSignals = await db.RecommendationActivities
                 .AsNoTracking()
                 .Where(activity => activity.Type == RecommendationActivityType.ProfileView
-                    && activity.ProfessionalProfile!.IsVerified)
+                    && activity.User.IsActive
+                    && activity.ProfessionalProfile!.IsVerified
+                    && activity.ProfessionalProfile.User.IsActive)
                 .OrderBy(activity => activity.Id)
                 .Select(activity => new UserRatingData
                 {
@@ -66,11 +70,13 @@ public sealed class ModelRetrainingService(
                 .ToListAsync(cancellationToken);
             var categorySearchSignals = await db.RecommendationActivities
                 .AsNoTracking()
-                .Where(activity => activity.Type == RecommendationActivityType.CategorySearch)
+                .Where(activity => activity.Type == RecommendationActivityType.CategorySearch
+                    && activity.User.IsActive)
                 .SelectMany(
                     activity => db.ProfessionalCategories.Where(link =>
                         link.CategoryId == activity.CategoryId
-                        && link.ProfessionalProfile.IsVerified),
+                        && link.ProfessionalProfile.IsVerified
+                        && link.ProfessionalProfile.User.IsActive),
                     (activity, link) => new UserRatingData
                     {
                         UserId = activity.UserId,

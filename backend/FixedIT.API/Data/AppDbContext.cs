@@ -60,7 +60,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(user => user.ProfilePictureUrl)
                 .HasMaxLength(DatabaseConstants.UrlMaxLength);
             entity.Property(user => user.CreatedAt).HasColumnType("datetime2");
-            entity.HasQueryFilter(user => user.IsActive);
             entity.HasIndex(user => user.CityId);
 
             entity.HasOne(user => user.City)
@@ -136,7 +135,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     {
         builder.Entity<ProfessionalProfile>(entity =>
         {
-            entity.HasQueryFilter(profile => profile.User.IsActive);
             entity.Property(profile => profile.Bio)
                 .HasMaxLength(DatabaseConstants.DescriptionMaxLength)
                 .IsRequired();
@@ -154,7 +152,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<ProfessionalCategory>(entity =>
         {
-            entity.HasQueryFilter(link => link.ProfessionalProfile.User.IsActive);
             entity.HasKey(link => new { link.ProfessionalProfileId, link.CategoryId });
             entity.HasOne(link => link.ProfessionalProfile)
                 .WithMany(profile => profile.ProfessionalCategories)
@@ -168,7 +165,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<ProfessionalAvailability>(entity =>
         {
-            entity.HasQueryFilter(item => item.ProfessionalProfile.User.IsActive);
             entity.Property(item => item.StartTime).HasColumnType("time");
             entity.Property(item => item.EndTime).HasColumnType("time");
             entity.HasIndex(item => new { item.ProfessionalProfileId, item.DayOfWeek, item.StartTime })
@@ -184,7 +180,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<PortfolioItem>(entity =>
         {
-            entity.HasQueryFilter(item => item.ProfessionalProfile.User.IsActive);
             entity.Property(item => item.Title)
                 .HasMaxLength(DatabaseConstants.TitleMaxLength)
                 .IsRequired();
@@ -431,7 +426,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     {
         builder.Entity<Notification>(entity =>
         {
-            entity.HasQueryFilter(notification => notification.User.IsActive);
             entity.Property(notification => notification.Title)
                 .HasMaxLength(DatabaseConstants.TitleMaxLength)
                 .IsRequired();
@@ -472,9 +466,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<UserRating>(entity =>
         {
-            entity.HasQueryFilter(rating =>
-                rating.User.IsActive
-                && rating.ProfessionalProfile.User.IsActive);
             entity.Property(rating => rating.Timestamp).HasColumnType("datetime2");
             entity.HasIndex(rating => rating.ReviewId)
                 .IsUnique()
@@ -516,9 +507,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<RecommendationActivity>(entity =>
         {
-            entity.HasQueryFilter(activity => activity.User.IsActive
-                && (activity.ProfessionalProfile == null
-                    || activity.ProfessionalProfile.User.IsActive));
             entity.Property(activity => activity.CreatedAt).HasColumnType("datetime2");
             entity.HasIndex(activity => new { activity.UserId, activity.CreatedAt });
             entity.HasIndex(activity => new
@@ -562,7 +550,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<PasswordResetToken>(entity =>
         {
-            entity.HasQueryFilter(token => token.User.IsActive);
             entity.Property(token => token.TokenHash).HasMaxLength(64).IsRequired();
             entity.Property(token => token.CreatedAt).HasColumnType("datetime2");
             entity.Property(token => token.ExpiresAt).HasColumnType("datetime2");

@@ -83,7 +83,7 @@ public sealed class ConversationService(
             }
 
             if (!await db.Users.AnyAsync(
-                    user => user.Id == participantUserId,
+                    user => user.Id == participantUserId && user.IsActive,
                     cancellationToken))
             {
                 throw new NotFoundException("Učesnik razgovora nije pronađen.");

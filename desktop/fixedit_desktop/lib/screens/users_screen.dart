@@ -12,6 +12,7 @@ class UsersScreen extends StatefulWidget {
 }
 
 class _UsersScreenState extends State<UsersScreen> {
+  final _search = TextEditingController();
   PagedResult<AdminUserRecord>? _result;
   String? _error;
   String? _busyId;
@@ -23,6 +24,12 @@ class _UsersScreenState extends State<UsersScreen> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
   Future<void> _load([int? page]) async {
     setState(() {
       _page = page ?? _page;
@@ -30,7 +37,10 @@ class _UsersScreenState extends State<UsersScreen> {
       _error = null;
     });
     try {
-      final result = await widget.repository.getUsers(page: _page);
+      final result = await widget.repository.getUsers(
+        page: _page,
+        search: _search.text.trim(),
+      );
       if (mounted) setState(() => _result = result);
     } catch (exception) {
       if (mounted) setState(() => _error = userError(exception));
@@ -209,8 +219,22 @@ class _UsersScreenState extends State<UsersScreen> {
             ),
           ],
         ),
+        SizedBox(
+          width: 420,
+          child: TextField(
+            controller: _search,
+            decoration: const InputDecoration(
+              labelText: 'Ime, email ili grad',
+              suffixIcon: Icon(Icons.search),
+            ),
+            onSubmitted: (_) => _load(1),
+          ),
+        ),
+        const SizedBox(height: 14),
         if (_result!.items.isEmpty)
-          const Expanded(child: EmptyPanel(message: 'Nema korisnika.'))
+          const Expanded(
+            child: EmptyPanel(message: 'Nema korisnika za unesenu pretragu.'),
+          )
         else
           Expanded(
             child: Card(

@@ -18,11 +18,23 @@ public sealed class AdminUserService(
     ILogger<AdminUserService> logger) : IAdminUserService
 {
     public async Task<PagedResponse<AdminUserResponse>> GetPageAsync(
+        AdminUserFilterRequest filters,
         PagedRequest request,
         CancellationToken cancellationToken)
     {
         var page = paginationService.Normalize(request);
         var query = db.Users.IgnoreQueryFilters().AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(filters.Search))
+        {
+            var search = filters.Search.Trim();
+            query = query.Where(user =>
+                (user.Email != null && user.Email.Contains(search))
+                || user.FirstName.Contains(search)
+                || user.LastName.Contains(search)
+                || (user.FirstName + " " + user.LastName).Contains(search)
+                || user.City.Name.Contains(search));
+        }
+
         var total = await query.CountAsync(cancellationToken);
         var users = await query
             .OrderBy(user => user.LastName)

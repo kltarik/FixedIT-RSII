@@ -6,6 +6,7 @@ namespace FixedIT.API.Services;
 public interface IAdminUserService
 {
     Task<PagedResponse<AdminUserResponse>> GetPageAsync(
+        AdminUserFilterRequest filters,
         PagedRequest request,
         CancellationToken cancellationToken);
 

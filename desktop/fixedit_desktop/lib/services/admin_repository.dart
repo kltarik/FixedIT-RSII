@@ -222,11 +222,18 @@ class AdminRepository {
     ),
   );
 
-  Future<PagedResult<AdminUserRecord>> getUsers({int page = 1}) async {
+  Future<PagedResult<AdminUserRecord>> getUsers({
+    int page = 1,
+    String? search,
+  }) async {
     final response = await api.request<Json>(
       () => api.dio.get<Json>(
         '/api/admin/users',
-        queryParameters: {'page': page, 'pageSize': 20},
+        queryParameters: {
+          'page': page,
+          'pageSize': 20,
+          if (search?.isNotEmpty ?? false) 'search': search,
+        },
       ),
     );
     return PagedResult.fromJson(

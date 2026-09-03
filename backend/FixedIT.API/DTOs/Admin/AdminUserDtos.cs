@@ -15,6 +15,12 @@ public sealed record AdminUserResponse(
     DateTime CreatedAt,
     IReadOnlyCollection<string> Roles);
 
+public sealed class AdminUserFilterRequest
+{
+    [MaxLength(DatabaseConstants.ShortTextMaxLength)]
+    public string? Search { get; init; }
+}
+
 public sealed class SetUserActiveRequest
 {
     [Required]

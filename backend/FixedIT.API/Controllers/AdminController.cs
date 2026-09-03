@@ -27,10 +27,11 @@ public sealed class AdminController(
 
     [HttpGet("users")]
     public async Task<ActionResult<PagedResponse<AdminUserResponse>>> GetUsers(
+        [FromQuery] AdminUserFilterRequest filters,
         [FromQuery] PagedRequest request,
         CancellationToken cancellationToken)
     {
-        return Ok(await adminUserService.GetPageAsync(request, cancellationToken));
+        return Ok(await adminUserService.GetPageAsync(filters, request, cancellationToken));
     }
 
     [HttpPut("users/{id}/activate")]

@@ -206,7 +206,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     {
         builder.Entity<JobPosting>(entity =>
         {
-            entity.HasQueryFilter(job => job.ClientUser.IsActive);
             entity.Property(job => job.Title)
                 .HasMaxLength(DatabaseConstants.TitleMaxLength)
                 .IsRequired();
@@ -237,9 +236,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<JobOffer>(entity =>
         {
-            entity.HasQueryFilter(offer =>
-                offer.JobPosting.ClientUser.IsActive
-                && offer.ProfessionalProfile.User.IsActive);
             entity.Property(offer => offer.Message)
                 .HasMaxLength(DatabaseConstants.DescriptionMaxLength)
                 .IsRequired();
@@ -269,9 +265,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     {
         builder.Entity<Reservation>(entity =>
         {
-            entity.HasQueryFilter(reservation =>
-                reservation.ClientUser.IsActive
-                && reservation.ProfessionalProfile.User.IsActive);
             entity.Property(reservation => reservation.ServiceDescription)
                 .HasMaxLength(DatabaseConstants.DescriptionMaxLength)
                 .IsRequired();
@@ -319,7 +312,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<JobPostingImage>(entity =>
         {
-            entity.HasQueryFilter(image => image.JobPosting.ClientUser.IsActive);
             entity.Property(image => image.ImageUrl)
                 .HasMaxLength(DatabaseConstants.UrlMaxLength)
                 .IsRequired();
@@ -332,9 +324,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<Payment>(entity =>
         {
-            entity.HasQueryFilter(payment =>
-                payment.Reservation.ClientUser.IsActive
-                && payment.Reservation.ProfessionalProfile.User.IsActive);
             entity.Property(payment => payment.PayPalOrderId)
                 .HasMaxLength(DatabaseConstants.ExternalIdMaxLength)
                 .IsRequired();
@@ -369,9 +358,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<Review>(entity =>
         {
-            entity.HasQueryFilter(review =>
-                review.ClientUser.IsActive
-                && review.ProfessionalProfile.User.IsActive);
             entity.Property(review => review.Comment)
                 .HasMaxLength(DatabaseConstants.DescriptionMaxLength)
                 .IsRequired();
@@ -412,7 +398,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<ConversationParticipant>(entity =>
         {
-            entity.HasQueryFilter(participant => participant.User.IsActive);
             entity.HasKey(participant => new { participant.ConversationId, participant.UserId });
             entity.HasOne(participant => participant.Conversation)
                 .WithMany(conversation => conversation.Participants)
@@ -426,7 +411,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<Message>(entity =>
         {
-            entity.HasQueryFilter(message => message.SenderUser.IsActive);
             entity.Property(message => message.Content)
                 .HasMaxLength(DatabaseConstants.ContentMaxLength)
                 .IsRequired();
@@ -464,7 +448,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<AuditLog>(entity =>
         {
-            entity.HasQueryFilter(log => log.User.IsActive);
             entity.Property(log => log.Action)
                 .HasMaxLength(DatabaseConstants.ActionMaxLength)
                 .IsRequired();
@@ -564,9 +547,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<ReservationStatusHistory>(entity =>
         {
-            entity.HasQueryFilter(history =>
-                history.Reservation.ClientUser.IsActive
-                && history.Reservation.ProfessionalProfile.User.IsActive);
             entity.Property(history => history.Reason)
                 .HasMaxLength(DatabaseConstants.ShortTextMaxLength);
             entity.Property(history => history.ChangedByUserId)

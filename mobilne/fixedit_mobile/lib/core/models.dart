@@ -324,9 +324,11 @@ class Reservation {
     required this.id,
     required this.clientId,
     required this.clientName,
+    this.clientIsActive = true,
     required this.professionalId,
     required this.professionalUserId,
     required this.professionalName,
+    this.professionalIsActive = true,
     required this.categoryId,
     required this.categoryName,
     required this.description,
@@ -346,9 +348,11 @@ class Reservation {
   final int id;
   final String clientId;
   final String clientName;
+  final bool clientIsActive;
   final int professionalId;
   final String professionalUserId;
   final String professionalName;
+  final bool professionalIsActive;
   final int categoryId;
   final String categoryName;
   final String description;
@@ -370,11 +374,16 @@ class Reservation {
     clientName:
         '${jString(j, 'clientFirstName')} ${jString(j, 'clientLastName')}'
             .trim(),
+    clientIsActive:
+        !j.containsKey('clientIsActive') || jBool(j, 'clientIsActive'),
     professionalId: jInt(j, 'professionalProfileId'),
     professionalUserId: jString(j, 'professionalUserId'),
     professionalName:
         '${jString(j, 'professionalFirstName')} ${jString(j, 'professionalLastName')}'
             .trim(),
+    professionalIsActive:
+        !j.containsKey('professionalIsActive') ||
+        jBool(j, 'professionalIsActive'),
     categoryId: jInt(j, 'categoryId'),
     categoryName: jString(j, 'categoryName'),
     description: jString(j, 'serviceDescription'),

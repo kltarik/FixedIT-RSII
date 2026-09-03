@@ -122,7 +122,9 @@ class AdminReviewRecord {
     required this.reservationId,
     required this.professionalProfileId,
     required this.clientName,
+    this.clientIsActive = true,
     required this.professionalName,
+    this.professionalIsActive = true,
     required this.rating,
     required this.comment,
     required this.createdAt,
@@ -131,7 +133,9 @@ class AdminReviewRecord {
   final int reservationId;
   final int professionalProfileId;
   final String clientName;
+  final bool clientIsActive;
   final String professionalName;
+  final bool professionalIsActive;
   final int rating;
   final String comment;
   final DateTime createdAt;
@@ -393,7 +397,9 @@ class ReservationRecord {
   const ReservationRecord({
     required this.id,
     required this.clientName,
+    this.clientIsActive = true,
     required this.professionalName,
+    this.professionalIsActive = true,
     required this.serviceDescription,
     required this.scheduledAt,
     required this.durationMinutes,
@@ -404,7 +410,9 @@ class ReservationRecord {
   });
   final int id;
   final String clientName;
+  final bool clientIsActive;
   final String professionalName;
+  final bool professionalIsActive;
   final String serviceDescription;
   final DateTime scheduledAt;
   final int durationMinutes;
@@ -417,9 +425,14 @@ class ReservationRecord {
     clientName:
         '${jsonString(json, 'clientFirstName')} ${jsonString(json, 'clientLastName')}'
             .trim(),
+    clientIsActive:
+        !json.containsKey('clientIsActive') || jsonBool(json, 'clientIsActive'),
     professionalName:
         '${jsonString(json, 'professionalFirstName')} ${jsonString(json, 'professionalLastName')}'
             .trim(),
+    professionalIsActive:
+        !json.containsKey('professionalIsActive') ||
+        jsonBool(json, 'professionalIsActive'),
     serviceDescription: jsonString(json, 'serviceDescription'),
     scheduledAt: jsonDate(json, 'scheduledAt'),
     durationMinutes: jsonInt(json, 'durationMinutes'),

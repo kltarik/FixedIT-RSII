@@ -162,10 +162,16 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
                             DataCell(
                               Tooltip(
                                 message: reservation.serviceDescription,
-                                child: Text(reservation.clientName),
+                                child: Text(
+                                  '${reservation.clientName}${reservation.clientIsActive ? '' : ' (neaktivan)'}',
+                                ),
                               ),
                             ),
-                            DataCell(Text(reservation.professionalName)),
+                            DataCell(
+                              Text(
+                                '${reservation.professionalName}${reservation.professionalIsActive ? '' : ' (neaktivan)'}',
+                              ),
+                            ),
                             DataCell(
                               Text(
                                 dateTimeFormat.format(reservation.scheduledAt),

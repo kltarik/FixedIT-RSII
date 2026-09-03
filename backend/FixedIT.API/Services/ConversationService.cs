@@ -137,6 +137,7 @@ public sealed class ConversationService(
     {
         var page = paginationService.Normalize(request);
         var query = db.Conversations
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(conversation => conversation.Participants
                 .Any(participant => participant.UserId == userId));
@@ -190,6 +191,7 @@ public sealed class ConversationService(
         await EnsureParticipantAsync(userId, conversationId, cancellationToken);
         var page = paginationService.Normalize(request);
         var query = db.Messages
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(message => message.ConversationId == conversationId);
         var total = await query.CountAsync(cancellationToken);
@@ -213,7 +215,7 @@ public sealed class ConversationService(
         int conversationId,
         CancellationToken cancellationToken)
     {
-        if (!await db.ConversationParticipants.AnyAsync(
+        if (!await db.ConversationParticipants.IgnoreQueryFilters().AnyAsync(
                 participant => participant.ConversationId == conversationId
                     && participant.UserId == userId,
                 cancellationToken))
@@ -304,6 +306,7 @@ public sealed class ConversationService(
         CancellationToken cancellationToken)
     {
         return await db.Conversations
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(conversation => conversation.Id == conversationId
                 && conversation.Participants.Any(participant => participant.UserId == userId))

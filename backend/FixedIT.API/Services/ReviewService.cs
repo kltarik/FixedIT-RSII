@@ -119,7 +119,7 @@ public sealed class ReviewService(
         CancellationToken cancellationToken)
     {
         if (!await db.ProfessionalProfiles.AnyAsync(
-                profile => profile.Id == professionalProfileId,
+                profile => profile.Id == professionalProfileId && profile.IsVerified,
                 cancellationToken))
         {
             throw new NotFoundException("Profil profesionalca nije pronađen.");
@@ -127,6 +127,7 @@ public sealed class ReviewService(
 
         var page = paginationService.Normalize(request);
         var query = db.Reviews
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(review => review.ProfessionalProfileId == professionalProfileId);
         var total = await query.CountAsync(cancellationToken);

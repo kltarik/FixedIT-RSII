@@ -15,7 +15,9 @@ public sealed class JobSearchService(
         CancellationToken cancellationToken)
     {
         var page = paginationService.Normalize(request);
-        var query = db.JobPostings.AsNoTracking();
+        var query = db.JobPostings
+            .AsNoTracking()
+            .Where(job => job.ClientUser.IsActive);
 
         if (filters.CategoryId.HasValue)
         {

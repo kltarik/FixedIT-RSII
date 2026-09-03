@@ -87,6 +87,32 @@ public sealed class AdminUserService(
             .Include(item => item.City)
             .SingleOrDefaultAsync(item => item.Id == userId, cancellationToken)
             ?? throw new NotFoundException("Korisnik nije pronađen.");
+        if (!isActive)
+        {
+            var professionalId = await db.ProfessionalProfiles
+                .IgnoreQueryFilters()
+                .Where(profile => profile.UserId == userId)
+                .Select(profile => (int?)profile.Id)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (await HasActiveReservationsAsync(userId, professionalId, cancellationToken))
+            {
+                throw new BusinessException(
+                    "Korisnik se ne može deaktivirati dok postoje aktivne rezervacije.");
+            }
+
+            var now = DateTime.UtcNow;
+            var refreshTokens = await db.RefreshTokens
+                .IgnoreQueryFilters()
+                .Where(token => token.UserId == userId
+                    && token.RevokedAt == null
+                    && token.ExpiresAt > now)
+                .ToListAsync(cancellationToken);
+            foreach (var refreshToken in refreshTokens)
+            {
+                refreshToken.RevokedAt = now;
+            }
+        }
+
         user.IsActive = isActive;
         await db.SaveChangesAsync(cancellationToken);
         var roles = await userManager.GetRolesAsync(user);
@@ -159,21 +185,7 @@ public sealed class AdminUserService(
             .Where(profile => profile.UserId == userId)
             .Select(profile => (int?)profile.Id)
             .SingleOrDefaultAsync(cancellationToken);
-        var activeStatuses = new[]
-        {
-            ReservationStatus.Pending,
-            ReservationStatus.Accepted,
-            ReservationStatus.InProgress
-        };
-        var hasActiveReservations = await db.Reservations
-            .IgnoreQueryFilters()
-            .AnyAsync(
-                reservation => activeStatuses.Contains(reservation.Status)
-                    && (reservation.ClientUserId == userId
-                        || (professionalId.HasValue
-                            && reservation.ProfessionalProfileId == professionalId.Value)),
-                cancellationToken);
-        if (hasActiveReservations)
+        if (await HasActiveReservationsAsync(userId, professionalId, cancellationToken))
         {
             throw new BusinessException("Korisnik se ne može obrisati dok postoje aktivne rezervacije.");
         }
@@ -214,6 +226,27 @@ public sealed class AdminUserService(
                     imageUrl);
             }
         }
+    }
+
+    private async Task<bool> HasActiveReservationsAsync(
+        string userId,
+        int? professionalId,
+        CancellationToken cancellationToken)
+    {
+        var activeStatuses = new[]
+        {
+            ReservationStatus.Pending,
+            ReservationStatus.Accepted,
+            ReservationStatus.InProgress
+        };
+        return await db.Reservations
+            .IgnoreQueryFilters()
+            .AnyAsync(
+                reservation => activeStatuses.Contains(reservation.Status)
+                    && (reservation.ClientUserId == userId
+                        || (professionalId.HasValue
+                            && reservation.ProfessionalProfileId == professionalId.Value)),
+                cancellationToken);
     }
 
     private async Task<bool> HasRestrictDeleteRelationsAsync(

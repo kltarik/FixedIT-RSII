@@ -188,6 +188,7 @@ public sealed class ReservationService(
         CancellationToken cancellationToken)
     {
         var query = db.Reservations
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(reservation => reservation.ClientUserId == userId
                 || reservation.ProfessionalProfile.UserId == userId);
@@ -200,6 +201,7 @@ public sealed class ReservationService(
         CancellationToken cancellationToken)
     {
         return await db.Reservations
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(reservation => reservation.Id == reservationId
                 && (reservation.ClientUserId == userId

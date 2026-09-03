@@ -18,6 +18,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 using RabbitMQ.Client;
 using QuestPDF.Infrastructure;
 
@@ -223,6 +224,28 @@ builder.Services
                 }
 
                 return Task.CompletedTask;
+            },
+            OnTokenValidated = async context =>
+            {
+                var userId = context.Principal?.FindFirstValue(
+                    ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                    context.Fail("Korisnički nalog nije dostupan.");
+                    return;
+                }
+
+                var db = context.HttpContext.RequestServices
+                    .GetRequiredService<AppDbContext>();
+                var isActive = await db.Users
+                    .IgnoreQueryFilters()
+                    .AnyAsync(
+                        user => user.Id == userId && user.IsActive,
+                        context.HttpContext.RequestAborted);
+                if (!isActive)
+                {
+                    context.Fail("Korisnički nalog je deaktiviran.");
+                }
             }
         };
     });

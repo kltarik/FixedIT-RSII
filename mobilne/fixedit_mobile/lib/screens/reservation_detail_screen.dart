@@ -76,8 +76,8 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                   ),
                   Text(
                     professional
-                        ? 'Klijent: ${r.clientName}'
-                        : 'Profesionalac: ${r.professionalName}',
+                        ? 'Klijent: ${r.clientName}${r.clientIsActive ? '' : ' (neaktivan nalog)'}'
+                        : 'Profesionalac: ${r.professionalName}${r.professionalIsActive ? '' : ' (neaktivan nalog)'}',
                   ),
                   const SizedBox(height: 10),
                   Text(r.description),

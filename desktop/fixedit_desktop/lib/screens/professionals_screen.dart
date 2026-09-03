@@ -294,7 +294,7 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
                       DataColumn(label: Text('Ime')),
                       DataColumn(label: Text('Grad')),
                       DataColumn(label: Text('Kategorije')),
-                      DataColumn(label: Text('Satnica')),
+                      DataColumn(label: Text('Satnica (EUR)')),
                       DataColumn(label: Text('Ocjena')),
                       DataColumn(label: Text('Akcije')),
                     ],
@@ -328,7 +328,9 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
                               ),
                             ),
                             DataCell(
-                              Text(moneyFormat.format(professional.hourlyRate)),
+                              Text(
+                                '${moneyFormat.format(professional.hourlyRate)} EUR',
+                              ),
                             ),
                             DataCell(
                               Text(professional.rating.toStringAsFixed(1)),
@@ -383,7 +385,7 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
             Text(professional.bio),
             const SizedBox(height: 16),
             Text('Iskustvo: ${professional.experience} godina'),
-            Text('Satnica: ${moneyFormat.format(professional.hourlyRate)}'),
+            Text('Satnica: ${moneyFormat.format(professional.hourlyRate)} EUR'),
             Text(
               'Kategorije: ${professional.categories.map((item) => item.name).join(', ')}',
             ),

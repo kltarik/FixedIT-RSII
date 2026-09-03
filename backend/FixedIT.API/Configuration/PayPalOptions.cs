@@ -28,7 +28,7 @@ public sealed class PayPalOptions
     public string CancelUrl { get; set; } = string.Empty;
 
     [Required]
-    [RegularExpression("^[A-Z]{3}$")]
+    [RegularExpression("^EUR$")]
     public string Currency { get; set; } = string.Empty;
 
     [Range(5, 120)]

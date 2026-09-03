@@ -85,7 +85,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                   const Divider(height: 28),
                   Text('Termin: ${dateTime.format(r.scheduledAt)}'),
                   Text('Trajanje: ${r.duration} minuta'),
-                  Text('Cijena: ${money.format(r.price)} KM'),
+                  Text('Cijena: ${money.format(r.price)} EUR'),
                   if (r.reason != null) Text('Razlog: ${r.reason}'),
                 ],
               ),

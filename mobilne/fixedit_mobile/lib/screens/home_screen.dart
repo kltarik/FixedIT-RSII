@@ -87,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: Text(job.title),
                   subtitle: Text('${job.categoryName} • ${job.cityName}'),
                   trailing: Text(
-                    '${money.format(job.budget)} KM',
+                    '${money.format(job.budget)} EUR',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: midnight,
@@ -134,7 +134,7 @@ class _ProfessionalCard extends StatelessWidget {
               Text('${item.cityName} • ★ ${item.rating.toStringAsFixed(1)}'),
               const Spacer(),
               Text(
-                '${money.format(item.hourlyRate)} KM / h',
+                '${money.format(item.hourlyRate)} EUR / h',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: midnight,

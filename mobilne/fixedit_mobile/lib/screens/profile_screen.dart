@@ -258,7 +258,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: TextFormField(
             controller: rate,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Satnica'),
+            decoration: const InputDecoration(labelText: 'Satnica (EUR)'),
             validator: (value) => (double.tryParse(value ?? '') ?? -1) < 0
                 ? 'Neispravna satnica.'
                 : null,

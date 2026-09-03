@@ -267,7 +267,7 @@ class _ReportBody extends StatelessWidget {
                   children: [
                     for (final category in report.revenueByCategory)
                       Text(
-                        '${category.categoryName}: ${moneyFormat.format(category.revenue)}',
+                        '${category.categoryName}: ${moneyFormat.format(category.revenue)} ${report.currency}',
                       ),
                   ],
                 ),

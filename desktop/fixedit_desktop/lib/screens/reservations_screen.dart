@@ -172,7 +172,9 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
                               ),
                             ),
                             DataCell(
-                              Text(moneyFormat.format(reservation.totalPrice)),
+                              Text(
+                                '${moneyFormat.format(reservation.totalPrice)} EUR',
+                              ),
                             ),
                             DataCell(
                               Checkbox(

@@ -109,7 +109,7 @@ class _ProfessionalDetailScreenState extends State<ProfessionalDetailScreen> {
                         .toList(),
                   ),
                   Text(
-                    '${p.experience} god. iskustva • ${money.format(p.hourlyRate)} KM/h',
+                    '${p.experience} god. iskustva • ${money.format(p.hourlyRate)} EUR/h',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -389,7 +389,7 @@ class _ReservationFormState extends State<_ReservationForm> {
             ),
           const SizedBox(height: 10),
           Text(
-            'Procjena: ${money.format(widget.professional.hourlyRate * duration / 60)} KM',
+            'Procjena: ${money.format(widget.professional.hourlyRate * duration / 60)} EUR',
           ),
           const SizedBox(height: 16),
           FilledButton(

@@ -148,7 +148,7 @@ class _JobsScreenState extends State<JobsScreen> {
                       DataColumn(label: Text('Klijent')),
                       DataColumn(label: Text('Kategorija')),
                       DataColumn(label: Text('Grad')),
-                      DataColumn(label: Text('Budžet')),
+                      DataColumn(label: Text('Budžet (EUR)')),
                       DataColumn(label: Text('Status')),
                       DataColumn(label: Text('Kreiran')),
                     ],
@@ -165,7 +165,9 @@ class _JobsScreenState extends State<JobsScreen> {
                             DataCell(Text(job.clientName)),
                             DataCell(Text(job.categoryName)),
                             DataCell(Text(job.cityName)),
-                            DataCell(Text(moneyFormat.format(job.budget))),
+                            DataCell(
+                              Text('${moneyFormat.format(job.budget)} EUR'),
+                            ),
                             DataCell(
                               StatusPill(
                                 label: job.status == 1 ? 'Otvoren' : 'Zatvoren',

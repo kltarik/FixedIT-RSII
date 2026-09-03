@@ -125,7 +125,7 @@ class _JobsScreenState extends State<JobsScreen> {
                                 const SizedBox(height: 10),
                                 Text('${job.categoryName} • ${job.cityName}'),
                                 Text(
-                                  '${money.format(job.budget)} KM',
+                                  '${money.format(job.budget)} EUR',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -282,7 +282,7 @@ class _JobFormState extends State<_JobForm> {
             TextFormField(
               controller: budget,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Budžet (KM)'),
+              decoration: const InputDecoration(labelText: 'Budžet (EUR)'),
               validator: (v) => (double.tryParse(v ?? '') ?? 0) <= 0
                   ? 'Unesite pozitivan budžet.'
                   : null,
@@ -423,7 +423,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                 const SizedBox(height: 12),
                 Text('${widget.job.categoryName} • ${widget.job.cityName}'),
                 Text(
-                  'Budžet: ${money.format(widget.job.budget)} KM',
+                  'Budžet: ${money.format(widget.job.budget)} EUR',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
@@ -447,7 +447,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                     '${offer.professionalName} • ★ ${offer.rating.toStringAsFixed(1)}',
                   ),
                   subtitle: Text(
-                    '${offer.message}\n${money.format(offer.price)} KM',
+                    '${offer.message}\n${money.format(offer.price)} EUR',
                   ),
                   isThreeLine: true,
                   trailing: offer.status == 1

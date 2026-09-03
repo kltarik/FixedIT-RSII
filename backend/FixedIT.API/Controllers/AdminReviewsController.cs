@@ -25,11 +25,13 @@ public sealed class AdminReviewsController(IReviewService reviewService) : Contr
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(
         int id,
+        [FromBody] DeleteReviewRequest request,
         CancellationToken cancellationToken)
     {
         await reviewService.DeleteAsync(
             User.GetUserId(),
             id,
+            request.Reason,
             cancellationToken);
         return NoContent();
     }

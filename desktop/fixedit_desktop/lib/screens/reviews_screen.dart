@@ -49,28 +49,61 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
   }
 
   Future<void> _delete(AdminReviewRecord review) async {
-    final confirmed = await showDialog<bool>(
+    final reasonController = TextEditingController();
+    String? validationMessage;
+    final reason = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Ukloniti recenziju?'),
-        content: const Text(
-          'Recenzija će biti trajno uklonjena, a prosječna ocjena profesionalca ponovo izračunata.',
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Ukloniti recenziju?'),
+          content: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Recenzija će biti trajno uklonjena, a prosječna ocjena profesionalca ponovo izračunata.',
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: reasonController,
+                  maxLength: 2000,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    labelText: 'Razlog uklanjanja',
+                    errorText: validationMessage,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Odustani'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final value = reasonController.text.trim();
+                if (value.isEmpty) {
+                  setDialogState(
+                    () => validationMessage = 'Unesite razlog uklanjanja.',
+                  );
+                  return;
+                }
+                Navigator.pop(dialogContext, value);
+              },
+              child: const Text('Ukloni'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Odustani'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Ukloni'),
-          ),
-        ],
       ),
     );
-    if (confirmed != true) return;
+    reasonController.dispose();
+    if (reason == null) return;
     try {
-      await widget.repository.deleteReview(review.id);
+      await widget.repository.deleteReview(review.id, reason);
       if (mounted) await _load(_page);
     } catch (error) {
       if (mounted) await showApiErrorDialog(context, userError(error));

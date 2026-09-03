@@ -215,8 +215,12 @@ class AdminRepository {
     );
   }
 
-  Future<void> deleteReview(int id) =>
-      api.request<void>(() => api.dio.delete<void>('/api/admin/reviews/$id'));
+  Future<void> deleteReview(int id, String reason) => api.request<void>(
+    () => api.dio.delete<void>(
+      '/api/admin/reviews/$id',
+      data: {'reason': reason},
+    ),
+  );
 
   Future<PagedResult<AdminUserRecord>> getUsers({int page = 1}) async {
     final response = await api.request<Json>(

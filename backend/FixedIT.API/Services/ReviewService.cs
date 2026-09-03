@@ -193,8 +193,15 @@ public sealed class ReviewService(
     public async Task DeleteAsync(
         string adminUserId,
         int reviewId,
+        string reason,
         CancellationToken cancellationToken)
     {
+        var normalizedReason = reason.Trim();
+        if (normalizedReason.Length == 0)
+        {
+            throw new BusinessException("Razlog uklanjanja recenzije je obavezan.");
+        }
+
         var professionalProfileId = await db.Reviews
             .IgnoreQueryFilters()
             .Where(review => review.Id == reviewId)
@@ -225,7 +232,7 @@ public sealed class ReviewService(
             Action = "Deleted",
             EntityType = nameof(Review),
             EntityId = review.Id.ToString(),
-            Details = $"Recenzija za rezervaciju {review.ReservationId} uklonjena je moderacijom.",
+            Details = $"Recenzija za rezervaciju {review.ReservationId} uklonjena je moderacijom. Razlog: {normalizedReason}",
             IpAddress = GetRemoteIpAddress(),
             CreatedAt = DateTime.UtcNow
         });

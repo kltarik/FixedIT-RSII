@@ -36,6 +36,13 @@ public sealed class AdminReviewFilterRequest
     public string? Search { get; init; }
 }
 
+public sealed class DeleteReviewRequest
+{
+    [Required]
+    [MaxLength(DatabaseConstants.DescriptionMaxLength)]
+    public string Reason { get; set; } = string.Empty;
+}
+
 public sealed record AdminReviewResponse(
     int Id,
     int ReservationId,

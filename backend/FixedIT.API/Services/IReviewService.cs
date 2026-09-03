@@ -23,5 +23,6 @@ public interface IReviewService
     Task DeleteAsync(
         string adminUserId,
         int reviewId,
+        string reason,
         CancellationToken cancellationToken);
 }

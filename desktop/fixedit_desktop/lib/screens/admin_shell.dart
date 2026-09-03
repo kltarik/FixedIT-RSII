@@ -10,6 +10,7 @@ import 'audit_logs_screen.dart';
 import 'dashboard_screen.dart';
 import 'jobs_screen.dart';
 import 'professionals_screen.dart';
+import 'reference_data_screen.dart';
 import 'reports_screen.dart';
 import 'reservations_screen.dart';
 import 'users_screen.dart';
@@ -32,6 +33,7 @@ class _AdminShellState extends State<AdminShell> {
     (Icons.verified_user_outlined, 'Profesionalci'),
     (Icons.work_outline, 'Oglasi'),
     (Icons.event_available_outlined, 'Rezervacije'),
+    (Icons.dataset_outlined, 'Referentni podaci'),
     (Icons.manage_search_outlined, 'Evidencija aktivnosti'),
     (Icons.assessment_outlined, 'Izvještaji'),
   ];
@@ -60,6 +62,7 @@ class _AdminShellState extends State<AdminShell> {
     ProfessionalsScreen(repository: _repository),
     JobsScreen(repository: _repository),
     ReservationsScreen(repository: _repository),
+    ReferenceDataScreen(repository: _repository),
     AuditLogsScreen(repository: _repository),
     ReportsScreen(repository: _repository),
   ];

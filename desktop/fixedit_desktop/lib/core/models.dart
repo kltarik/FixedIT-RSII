@@ -41,6 +41,81 @@ class PagedResult<T> {
       );
 }
 
+class CountryRecord {
+  const CountryRecord({
+    required this.id,
+    required this.name,
+    required this.code,
+  });
+  final int id;
+  final String name;
+  final String code;
+
+  factory CountryRecord.fromJson(Json json) => CountryRecord(
+    id: jsonInt(json, 'id'),
+    name: jsonString(json, 'name'),
+    code: jsonString(json, 'code'),
+  );
+}
+
+class CityRecord {
+  const CityRecord({
+    required this.id,
+    required this.name,
+    required this.countryId,
+    required this.countryName,
+  });
+  final int id;
+  final String name;
+  final int countryId;
+  final String countryName;
+
+  factory CityRecord.fromJson(Json json) => CityRecord(
+    id: jsonInt(json, 'id'),
+    name: jsonString(json, 'name'),
+    countryId: jsonInt(json, 'countryId'),
+    countryName: jsonString(json, 'countryName'),
+  );
+}
+
+class CategoryRecord {
+  const CategoryRecord({
+    required this.id,
+    required this.name,
+    required this.description,
+    this.iconUrl,
+  });
+  final int id;
+  final String name;
+  final String description;
+  final String? iconUrl;
+
+  factory CategoryRecord.fromJson(Json json) => CategoryRecord(
+    id: jsonInt(json, 'id'),
+    name: jsonString(json, 'name'),
+    description: jsonString(json, 'description'),
+    iconUrl: json['iconUrl']?.toString(),
+  );
+}
+
+class ReservationStatusRecord {
+  const ReservationStatusRecord({
+    required this.id,
+    required this.name,
+    required this.description,
+  });
+  final int id;
+  final String name;
+  final String description;
+
+  factory ReservationStatusRecord.fromJson(Json json) =>
+      ReservationStatusRecord(
+        id: jsonInt(json, 'id'),
+        name: jsonString(json, 'name'),
+        description: jsonString(json, 'description'),
+      );
+}
+
 class AuthUser {
   const AuthUser({
     required this.id,

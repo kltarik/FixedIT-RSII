@@ -1,5 +1,6 @@
 using FixedIT.API.Constants;
 using FixedIT.API.Models;
+using FixedIT.API.Models.Enums;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +10,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     : IdentityDbContext<User, Role, string>(options)
 {
     public DbSet<City> Cities => Set<City>();
+    public DbSet<Country> Countries => Set<Country>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<ReservationStatusDefinition> ReservationStatusDefinitions => Set<ReservationStatusDefinition>();
     public DbSet<ProfessionalProfile> ProfessionalProfiles => Set<ProfessionalProfile>();
     public DbSet<ProfessionalCategory> ProfessionalCategories => Set<ProfessionalCategory>();
     public DbSet<PortfolioItem> PortfolioItems => Set<PortfolioItem>();
@@ -69,7 +72,45 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(city => city.Name)
                 .HasMaxLength(DatabaseConstants.NameMaxLength)
                 .IsRequired();
-            entity.HasIndex(city => city.Name).IsUnique();
+            entity.HasIndex(city => new { city.CountryId, city.Name }).IsUnique();
+            entity.HasOne(city => city.Country)
+                .WithMany(country => country.Cities)
+                .HasForeignKey(city => city.CountryId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Country>(entity =>
+        {
+            entity.Property(country => country.Name)
+                .HasMaxLength(DatabaseConstants.NameMaxLength)
+                .IsRequired();
+            entity.Property(country => country.Code)
+                .HasMaxLength(3)
+                .IsRequired();
+            entity.HasIndex(country => country.Name).IsUnique();
+            entity.HasIndex(country => country.Code).IsUnique();
+            entity.HasData(new Country
+            {
+                Id = 1,
+                Name = "Bosna i Hercegovina",
+                Code = "BIH"
+            });
+        });
+
+        builder.Entity<ReservationStatusDefinition>(entity =>
+        {
+            entity.Property(status => status.Name)
+                .HasMaxLength(DatabaseConstants.NameMaxLength)
+                .IsRequired();
+            entity.Property(status => status.Description)
+                .HasMaxLength(DatabaseConstants.DescriptionMaxLength)
+                .IsRequired();
+            entity.HasData(
+                new ReservationStatusDefinition { Id = ReservationStatus.Pending, Name = "Na čekanju", Description = "Rezervacija čeka odgovor profesionalca." },
+                new ReservationStatusDefinition { Id = ReservationStatus.Accepted, Name = "Prihvaćena", Description = "Profesionalac je prihvatio rezervaciju." },
+                new ReservationStatusDefinition { Id = ReservationStatus.InProgress, Name = "U toku", Description = "Rad na rezervaciji je započet." },
+                new ReservationStatusDefinition { Id = ReservationStatus.Completed, Name = "Završena", Description = "Rezervisani posao je završen." },
+                new ReservationStatusDefinition { Id = ReservationStatus.Cancelled, Name = "Otkazana", Description = "Rezervacija je otkazana." });
         });
 
         builder.Entity<Category>(entity =>
@@ -244,6 +285,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.HasOne(reservation => reservation.ProfessionalProfile)
                 .WithMany(profile => profile.Reservations)
                 .HasForeignKey(reservation => reservation.ProfessionalProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(reservation => reservation.StatusDefinition)
+                .WithMany(status => status.Reservations)
+                .HasForeignKey(reservation => reservation.Status)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

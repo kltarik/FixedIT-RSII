@@ -21,7 +21,7 @@ services:
     ports: ["5000:8080"]
     volumes: ["uploads:/app/uploads"]
     environment:
-      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=FixedITDb;User Id=sa;Password=${DB_SA_PASSWORD};TrustServerCertificate=True"
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=200112;User Id=sa;Password=${DB_SA_PASSWORD};TrustServerCertificate=True"
       SeedData__AdminEmail: "${SEED_ADMIN_EMAIL}"
       SeedData__AdminPassword: "${SEED_ADMIN_PASSWORD}"
       SeedData__DefaultUserPassword: "${SEED_USER_PASSWORD}"

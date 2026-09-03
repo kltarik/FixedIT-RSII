@@ -105,10 +105,11 @@ public static class SeedData
 
     private static async Task SeedReferenceDataAsync(AppDbContext db)
     {
+        const int defaultCountryId = 1;
         var existingCityNames = await db.Cities.Select(city => city.Name).ToHashSetAsync();
         foreach (var cityName in SeedDataConstants.CityNames.Where(name => !existingCityNames.Contains(name)))
         {
-            db.Cities.Add(new City { Name = cityName });
+            db.Cities.Add(new City { Name = cityName, CountryId = defaultCountryId });
         }
 
         var existingCategoryNames = await db.Categories.Select(category => category.Name).ToHashSetAsync();

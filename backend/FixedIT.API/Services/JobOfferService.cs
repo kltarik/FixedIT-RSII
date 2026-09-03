@@ -13,7 +13,9 @@ namespace FixedIT.API.Services;
 
 public sealed class JobOfferService(
     AppDbContext db,
-    IPaginationService paginationService) : IJobOfferService
+    IPaginationService paginationService,
+    INotificationService notificationService,
+    ILogger<JobOfferService> logger) : IJobOfferService
 {
     private const string LockedJobPostingsSql =
         "SELECT * FROM [JobPostings] WITH (UPDLOCK, HOLDLOCK)";
@@ -55,18 +57,23 @@ public sealed class JobOfferService(
             throw new BusinessException("Vlasnik oglasa ne može poslati ponudu na vlastiti oglas.");
         }
 
-        var professionalProfileId = await db.ProfessionalProfiles
+        var professional = await db.ProfessionalProfiles
             .Where(profile => profile.UserId == professionalUserId
                 && profile.IsVerified
                 && profile.User.IsActive)
-            .Select(profile => (int?)profile.Id)
+            .Select(profile => new
+            {
+                profile.Id,
+                profile.User.FirstName,
+                profile.User.LastName
+            })
             .SingleOrDefaultAsync(cancellationToken)
             ?? throw new NotFoundException("Profil profesionalca nije pronađen.");
         if (await db.JobOffers
             .IgnoreQueryFilters()
             .AnyAsync(
                 offer => offer.JobPostingId == jobId
-                    && offer.ProfessionalProfileId == professionalProfileId,
+                    && offer.ProfessionalProfileId == professional.Id,
                 cancellationToken))
         {
             throw new BusinessException("Profesionalac može poslati samo jednu ponudu po oglasu.");
@@ -75,12 +82,22 @@ public sealed class JobOfferService(
         var offer = new JobOffer
         {
             JobPostingId = jobId,
-            ProfessionalProfileId = professionalProfileId,
+            ProfessionalProfileId = professional.Id,
             Message = request.Message.Trim(),
             ProposedPrice = request.ProposedPrice,
             Status = JobOfferStatus.Pending
         };
+        var notification = new Notification
+        {
+            UserId = job.ClientUserId,
+            Title = "Nova ponuda",
+            Body = $"{professional.FirstName} {professional.LastName} je poslao/la ponudu za oglas \"{job.Title}\".",
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow,
+            Type = NotificationType.General
+        };
         db.JobOffers.Add(offer);
+        db.Notifications.Add(notification);
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -91,6 +108,19 @@ public sealed class JobOfferService(
         }
 
         await transaction.CommitAsync(cancellationToken);
+        try
+        {
+            await notificationService.PushAsync(notification, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(
+                exception,
+                "SignalR notification {NotificationId} failed after job offer {OfferId} was committed.",
+                notification.Id,
+                offer.Id);
+        }
+
         return await GetOfferAsync(offer.Id, cancellationToken);
     }
 

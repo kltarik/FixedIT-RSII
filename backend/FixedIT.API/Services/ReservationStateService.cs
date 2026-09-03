@@ -148,7 +148,8 @@ public sealed class ReservationStateService(
             (ReservationStatus.InProgress, ReservationStatus.Completed) => isProfessional || isAdmin,
             (ReservationStatus.Pending, ReservationStatus.Cancelled) =>
                 isClient || isProfessional || isAdmin,
-            (ReservationStatus.Accepted, ReservationStatus.Cancelled) => isClient || isAdmin,
+            (ReservationStatus.Accepted, ReservationStatus.Cancelled) =>
+                isClient || isProfessional || isAdmin,
             (ReservationStatus.InProgress, ReservationStatus.Cancelled) => isAdmin,
             _ => false
         };

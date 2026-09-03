@@ -188,7 +188,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
         ),
       );
     }
-    final canCancel = r.status == 1 || (!professional && r.status == 2);
+    final canCancel = r.status == 1 || r.status == 2;
     if (canCancel) {
       actions.add(
         Padding(

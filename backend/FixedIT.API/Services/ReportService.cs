@@ -124,6 +124,145 @@ public sealed class ReportService(
             CancellationToken cancellationToken)
     {
         var page = paginationService.Normalize(request);
+        var performanceQuery = BuildProfessionalPerformanceQuery(filters);
+        var total = await performanceQuery.CountAsync(cancellationToken);
+        var rows = await performanceQuery
+            .OrderByDescending(item => item.TotalRevenue)
+            .ThenByDescending(item => item.CompletedReservations)
+            .ThenBy(item => item.LastName)
+            .ThenBy(item => item.FirstName)
+            .ThenBy(item => item.ProfessionalProfileId)
+            .Skip(page.Skip)
+            .Take(page.PageSize)
+            .ToListAsync(cancellationToken);
+        var items = rows.Select(MapProfessionalPerformance).ToArray();
+
+        return new PagedResponse<ProfessionalPerformanceResponse>(
+            items,
+            total,
+            page.Page,
+            page.PageSize);
+    }
+
+    public async Task<ProfessionalPerformanceDocumentData>
+        GetProfessionalPerformanceDocumentAsync(
+            ReportFilterRequest filters,
+            CancellationToken cancellationToken)
+    {
+        var rows = await BuildProfessionalPerformanceQuery(filters)
+            .OrderByDescending(item => item.TotalRevenue)
+            .ThenByDescending(item => item.CompletedReservations)
+            .ThenBy(item => item.LastName)
+            .ThenBy(item => item.FirstName)
+            .ThenBy(item => item.ProfessionalProfileId)
+            .Take(_reportOptions.MaxPdfRows + 1)
+            .ToListAsync(cancellationToken);
+        var isTruncated = rows.Count > _reportOptions.MaxPdfRows;
+        if (isTruncated)
+        {
+            rows.RemoveAt(rows.Count - 1);
+        }
+
+        return new ProfessionalPerformanceDocumentData(
+            filters.From,
+            filters.To,
+            filters.CategoryId,
+            _currency,
+            rows.Select(MapProfessionalPerformance).ToArray(),
+            isTruncated,
+            DateTime.UtcNow);
+    }
+
+    private IQueryable<Payment> BuildCompletedPaymentQuery(
+        string userId,
+        bool isAdmin,
+        ReportFilterRequest filters)
+    {
+        var dateRange = CreateDateRange(filters);
+        var query = db.Payments
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(payment => payment.Status == PaymentStatus.Completed
+                && payment.CompletedAt.HasValue
+                && payment.Currency == _currency);
+        if (!isAdmin)
+        {
+            query = query.Where(payment =>
+                payment.Reservation.ProfessionalProfile.UserId == userId);
+        }
+
+        if (filters.CategoryId.HasValue)
+        {
+            query = query.Where(payment =>
+                payment.Reservation.CategoryId == filters.CategoryId.Value);
+        }
+
+        if (dateRange.FromUtc.HasValue)
+        {
+            query = query.Where(payment =>
+                payment.CompletedAt!.Value >= dateRange.FromUtc.Value);
+        }
+
+        if (dateRange.ToExclusiveUtc.HasValue)
+        {
+            query = query.Where(payment =>
+                payment.CompletedAt!.Value < dateRange.ToExclusiveUtc.Value);
+        }
+
+        return query;
+    }
+
+    private static IQueryable<CategoryRevenueProjection> BuildCategoryRevenueQuery(
+        IQueryable<Payment> query)
+    {
+        return query
+            .Select(payment => new
+            {
+                payment.Reservation.CategoryId,
+                payment.Reservation.Category.Name,
+                payment.Amount
+            })
+            .GroupBy(item => new { item.CategoryId, item.Name })
+            .Select(group => new CategoryRevenueProjection
+            {
+                CategoryId = group.Key.CategoryId,
+                CategoryName = group.Key.Name,
+                Revenue = group.Sum(item => item.Amount),
+                PaymentCount = group.Count()
+            })
+            .OrderByDescending(item => item.Revenue)
+            .ThenBy(item => item.CategoryName)
+            .ThenBy(item => item.CategoryId);
+    }
+
+    private static IQueryable<FinancialReservationResponse> ProjectFinancialReservations(
+        IQueryable<Payment> query)
+    {
+        return query
+            .OrderByDescending(payment => payment.CompletedAt)
+            .ThenByDescending(payment => payment.Id)
+            .Select(payment => new FinancialReservationResponse(
+                payment.Id,
+                payment.ReservationId,
+                payment.Reservation.ProfessionalProfileId,
+                payment.CompletedAt!.Value,
+                payment.Reservation.ClientUser.FirstName + " "
+                    + payment.Reservation.ClientUser.LastName,
+                payment.Reservation.ProfessionalProfile.User.FirstName + " "
+                    + payment.Reservation.ProfessionalProfile.User.LastName,
+                payment.Amount,
+                payment.Currency,
+                payment.Reservation.ProfessionalProfile.ProfessionalCategories
+                    .Where(link => link.CategoryId == payment.Reservation.CategoryId)
+                    .Select(link => new CategorySummaryResponse(
+                        payment.Reservation.CategoryId,
+                        payment.Reservation.Category.Name))
+                    .ToArray()));
+    }
+
+    private IQueryable<ProfessionalPerformanceProjection>
+        BuildProfessionalPerformanceQuery(ReportFilterRequest filters)
+    {
         var dateRange = CreateDateRange(filters);
         var profiles = db.ProfessionalProfiles
             .IgnoreQueryFilters()
@@ -134,8 +273,7 @@ public sealed class ReportService(
                 .Any(link => link.CategoryId == filters.CategoryId.Value));
         }
 
-        var total = await profiles.CountAsync(cancellationToken);
-        var performanceQuery = profiles.Select(profile => new ProfessionalPerformanceProjection
+        return profiles.Select(profile => new ProfessionalPerformanceProjection
         {
             ProfessionalProfileId = profile.Id,
             UserId = profile.UserId,
@@ -171,16 +309,12 @@ public sealed class ReportService(
                         || reservation.Payment.CompletedAt.Value < dateRange.ToExclusiveUtc.Value))
                 .Sum(reservation => (decimal?)reservation.Payment!.Amount) ?? 0m
         });
-        var rows = await performanceQuery
-            .OrderByDescending(item => item.TotalRevenue)
-            .ThenByDescending(item => item.CompletedReservations)
-            .ThenBy(item => item.LastName)
-            .ThenBy(item => item.FirstName)
-            .ThenBy(item => item.ProfessionalProfileId)
-            .Skip(page.Skip)
-            .Take(page.PageSize)
-            .ToListAsync(cancellationToken);
-        var items = rows.Select(item => new ProfessionalPerformanceResponse(
+    }
+
+    private ProfessionalPerformanceResponse MapProfessionalPerformance(
+        ProfessionalPerformanceProjection item)
+    {
+        return new ProfessionalPerformanceResponse(
             item.ProfessionalProfileId,
             item.UserId,
             item.FirstName,
@@ -197,103 +331,7 @@ public sealed class ReportService(
                     2,
                     MidpointRounding.AwayFromZero),
             item.TotalRevenue,
-            _currency)).ToArray();
-
-        return new PagedResponse<ProfessionalPerformanceResponse>(
-            items,
-            total,
-            page.Page,
-            page.PageSize);
-    }
-
-    private IQueryable<Payment> BuildCompletedPaymentQuery(
-        string userId,
-        bool isAdmin,
-        ReportFilterRequest filters)
-    {
-        var dateRange = CreateDateRange(filters);
-        var query = db.Payments
-            .IgnoreQueryFilters()
-            .AsNoTracking()
-            .Where(payment => payment.Status == PaymentStatus.Completed
-                && payment.CompletedAt.HasValue
-                && payment.Currency == _currency);
-        if (!isAdmin)
-        {
-            query = query.Where(payment =>
-                payment.Reservation.ProfessionalProfile.UserId == userId);
-        }
-
-        if (filters.CategoryId.HasValue)
-        {
-            query = query.Where(payment =>
-                payment.Reservation.ProfessionalProfile.ProfessionalCategories
-                    .Any(link => link.CategoryId == filters.CategoryId.Value));
-        }
-
-        if (dateRange.FromUtc.HasValue)
-        {
-            query = query.Where(payment =>
-                payment.CompletedAt!.Value >= dateRange.FromUtc.Value);
-        }
-
-        if (dateRange.ToExclusiveUtc.HasValue)
-        {
-            query = query.Where(payment =>
-                payment.CompletedAt!.Value < dateRange.ToExclusiveUtc.Value);
-        }
-
-        return query;
-    }
-
-    private static IQueryable<CategoryRevenueProjection> BuildCategoryRevenueQuery(
-        IQueryable<Payment> query)
-    {
-        return query
-            .SelectMany(
-                payment => payment.Reservation.ProfessionalProfile.ProfessionalCategories,
-                (payment, link) => new
-                {
-                    link.CategoryId,
-                    link.Category.Name,
-                    payment.Amount
-                })
-            .GroupBy(item => new { item.CategoryId, item.Name })
-            .Select(group => new CategoryRevenueProjection
-            {
-                CategoryId = group.Key.CategoryId,
-                CategoryName = group.Key.Name,
-                Revenue = group.Sum(item => item.Amount),
-                PaymentCount = group.Count()
-            })
-            .OrderByDescending(item => item.Revenue)
-            .ThenBy(item => item.CategoryName)
-            .ThenBy(item => item.CategoryId);
-    }
-
-    private static IQueryable<FinancialReservationResponse> ProjectFinancialReservations(
-        IQueryable<Payment> query)
-    {
-        return query
-            .OrderByDescending(payment => payment.CompletedAt)
-            .ThenByDescending(payment => payment.Id)
-            .Select(payment => new FinancialReservationResponse(
-                payment.Id,
-                payment.ReservationId,
-                payment.Reservation.ProfessionalProfileId,
-                payment.CompletedAt!.Value,
-                payment.Reservation.ClientUser.FirstName + " "
-                    + payment.Reservation.ClientUser.LastName,
-                payment.Reservation.ProfessionalProfile.User.FirstName + " "
-                    + payment.Reservation.ProfessionalProfile.User.LastName,
-                payment.Amount,
-                payment.Currency,
-                payment.Reservation.ProfessionalProfile.ProfessionalCategories
-                    .OrderBy(link => link.Category.Name)
-                    .Select(link => new CategorySummaryResponse(
-                        link.CategoryId,
-                        link.Category.Name))
-                    .ToArray()));
+            _currency);
     }
 
     private static ReportDateRange CreateDateRange(ReportFilterRequest filters)

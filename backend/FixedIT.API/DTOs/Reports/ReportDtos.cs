@@ -83,6 +83,15 @@ public sealed record ProfessionalPerformanceResponse(
     decimal TotalRevenue,
     string Currency);
 
+public sealed record ProfessionalPerformanceDocumentData(
+    DateOnly? From,
+    DateOnly? To,
+    int? CategoryId,
+    string Currency,
+    IReadOnlyCollection<ProfessionalPerformanceResponse> Professionals,
+    bool IsTruncated,
+    DateTime GeneratedAtUtc);
+
 public sealed record ReservationStatusCountResponse(
     ReservationStatus Status,
     int Count);

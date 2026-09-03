@@ -56,4 +56,17 @@ public sealed class ReportsController(
             request,
             cancellationToken));
     }
+
+    [Authorize(Policy = AuthorizationPolicyNames.AdminOnly)]
+    [HttpGet("professionals/performance/pdf")]
+    public async Task<IActionResult> DownloadProfessionalPerformancePdf(
+        [FromQuery] ReportFilterRequest filters,
+        CancellationToken cancellationToken)
+    {
+        var report = await reportService.GetProfessionalPerformanceDocumentAsync(
+            filters,
+            cancellationToken);
+        var pdf = pdfReportService.GenerateProfessionalPerformanceReport(report);
+        return File(pdf, "application/pdf", "fixedit-uspjesnost-profesionalaca.pdf");
+    }
 }

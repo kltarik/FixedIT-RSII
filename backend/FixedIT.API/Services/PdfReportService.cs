@@ -68,6 +68,65 @@ public sealed class PdfReportService(IOptions<ReportOptions> options) : IPdfRepo
         return document.GeneratePdf();
     }
 
+    public byte[] GenerateProfessionalPerformanceReport(
+        ProfessionalPerformanceDocumentData report)
+    {
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4.Landscape());
+                page.Margin(30);
+                page.DefaultTextStyle(style => style.FontSize(9));
+                page.Header().Column(column =>
+                {
+                    column.Item().Text(_options.CompanyName)
+                        .FontSize(20)
+                        .Bold()
+                        .FontColor(Colors.Blue.Darken2);
+                    column.Item().Text("Uspješnost profesionalaca")
+                        .FontSize(14)
+                        .SemiBold();
+                    column.Item().Text(BuildPeriodText(
+                        report.From,
+                        report.To,
+                        report.CategoryId));
+                });
+                page.Content().PaddingVertical(15).Column(column =>
+                {
+                    column.Spacing(10);
+                    column.Item().Row(row =>
+                    {
+                        row.RelativeItem().Text(
+                            $"Profesionalaca: {report.Professionals.Count}").Bold();
+                        row.RelativeItem().AlignRight().Text(
+                            $"Generisano: {report.GeneratedAtUtc:yyyy-MM-dd HH:mm} UTC");
+                    });
+
+                    if (report.IsTruncated)
+                    {
+                        column.Item()
+                            .Background(Colors.Orange.Lighten4)
+                            .Padding(8)
+                            .Text($"Tabela je ograničena na {_options.MaxPdfRows} redova.");
+                    }
+
+                    column.Item().Element(tableContainer =>
+                        ComposeProfessionalTable(tableContainer, report));
+                });
+                page.Footer().AlignCenter().Text(text =>
+                {
+                    text.Span("Stranica ");
+                    text.CurrentPageNumber();
+                    text.Span(" od ");
+                    text.TotalPages();
+                });
+            });
+        });
+
+        return document.GeneratePdf();
+    }
+
     private static void ComposeTable(
         IContainer container,
         IReadOnlyCollection<FinancialReservationResponse> reservations)
@@ -116,6 +175,57 @@ public sealed class PdfReportService(IOptions<ReportOptions> options) : IPdfRepo
         });
     }
 
+    private static void ComposeProfessionalTable(
+        IContainer container,
+        ProfessionalPerformanceDocumentData report)
+    {
+        if (report.Professionals.Count == 0)
+        {
+            container
+                .Border(1)
+                .BorderColor(Colors.Grey.Lighten2)
+                .Padding(15)
+                .AlignCenter()
+                .Text("Nema profesionalaca za odabrane filtere.");
+            return;
+        }
+
+        container.Table(table =>
+        {
+            table.ColumnsDefinition(columns =>
+            {
+                columns.RelativeColumn(2);
+                columns.ConstantColumn(60);
+                columns.ConstantColumn(65);
+                columns.ConstantColumn(65);
+                columns.ConstantColumn(65);
+                columns.ConstantColumn(70);
+                columns.ConstantColumn(90);
+            });
+            table.Header(header =>
+            {
+                HeaderCell(header.Cell(), "Profesionalac");
+                HeaderCell(header.Cell(), "Ocjena");
+                HeaderCell(header.Cell(), "Ukupno");
+                HeaderCell(header.Cell(), "Završeno");
+                HeaderCell(header.Cell(), "Otkazano");
+                HeaderCell(header.Cell(), "Uspješnost");
+                HeaderCell(header.Cell(), "Prihod");
+            });
+
+            foreach (var professional in report.Professionals)
+            {
+                BodyCell(table.Cell(), $"{professional.FirstName} {professional.LastName}");
+                BodyCell(table.Cell(), professional.AverageRating.ToString("N2", CultureInfo.InvariantCulture), true);
+                BodyCell(table.Cell(), professional.TotalReservations.ToString(CultureInfo.InvariantCulture), true);
+                BodyCell(table.Cell(), professional.CompletedReservations.ToString(CultureInfo.InvariantCulture), true);
+                BodyCell(table.Cell(), professional.CancelledReservations.ToString(CultureInfo.InvariantCulture), true);
+                BodyCell(table.Cell(), $"{professional.CompletionRate:N2} %", true);
+                BodyCell(table.Cell(), FormatMoney(professional.TotalRevenue, report.Currency), true);
+            }
+        });
+    }
+
     private static void HeaderCell(IContainer container, string text)
     {
         container
@@ -146,6 +256,21 @@ public sealed class PdfReportService(IOptions<ReportOptions> options) : IPdfRepo
         var to = report.To?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "danas";
         var category = report.CategoryId.HasValue
             ? $" | ID kategorije: {report.CategoryId.Value}"
+            : string.Empty;
+        return $"Period: {from} do {to}{category}";
+    }
+
+    private static string BuildPeriodText(
+        DateOnly? fromDate,
+        DateOnly? toDate,
+        int? categoryId)
+    {
+        var from = fromDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+            ?? "početak";
+        var to = toDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+            ?? "danas";
+        var category = categoryId.HasValue
+            ? $" | ID kategorije: {categoryId.Value}"
             : string.Empty;
         return $"Period: {from} do {to}{category}";
     }

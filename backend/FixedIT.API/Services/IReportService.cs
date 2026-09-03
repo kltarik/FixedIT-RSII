@@ -22,4 +22,8 @@ public interface IReportService
         ReportFilterRequest filters,
         PagedRequest request,
         CancellationToken cancellationToken);
+
+    Task<ProfessionalPerformanceDocumentData> GetProfessionalPerformanceDocumentAsync(
+        ReportFilterRequest filters,
+        CancellationToken cancellationToken);
 }

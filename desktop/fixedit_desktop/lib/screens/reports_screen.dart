@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -58,17 +60,39 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
   }
 
-  Future<void> _exportPdf() async {
+  Future<void> _exportPdf({
+    required bool professionalPerformance,
+    required bool print,
+  }) async {
     setState(() => _exporting = true);
     try {
-      final bytes = await widget.repository.downloadFinancialReport(
-        from: _from,
-        to: _to,
-        categoryId: _categoryId,
-      );
+      final bytes = professionalPerformance
+          ? await widget.repository.downloadProfessionalPerformanceReport(
+              from: _from,
+              to: _to,
+              categoryId: _categoryId,
+            )
+          : await widget.repository.downloadFinancialReport(
+              from: _from,
+              to: _to,
+              categoryId: _categoryId,
+            );
+      final reportName = professionalPerformance
+          ? 'fixedit-uspjesnost-profesionalaca.pdf'
+          : 'fixedit-finansijski-izvjestaj.pdf';
+      if (print) {
+        await _printPdf(bytes, reportName);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('PDF je poslan na štampanje.')),
+          );
+        }
+        return;
+      }
+
       final path = await FilePicker.platform.saveFile(
-        dialogTitle: 'Sačuvaj FixedIT finansijski izvještaj',
-        fileName: 'fixedit-finansijski-izvjestaj.pdf',
+        dialogTitle: 'Sačuvaj FixedIT PDF izvještaj',
+        fileName: reportName,
         type: FileType.custom,
         allowedExtensions: const ['pdf'],
         bytes: bytes,
@@ -92,6 +116,26 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
   }
 
+  Future<void> _printPdf(List<int> bytes, String fileName) async {
+    final file = File('${Directory.systemTemp.path}\\$fileName');
+    await file.writeAsBytes(bytes, flush: true);
+    final escapedPath = file.path.replaceAll("'", "''");
+    final result = await Process.run('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      "Start-Process -FilePath '$escapedPath' -Verb Print -WindowStyle Hidden",
+    ]);
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        'powershell.exe',
+        const [],
+        result.stderr.toString(),
+        result.exitCode,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -102,7 +146,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
             'Prihod, kategorije, završene rezervacije i server-side PDF dokument.',
         actions: [
           FilledButton.icon(
-            onPressed: _report == null || _exporting ? null : _exportPdf,
+            onPressed: _report == null || _exporting
+                ? null
+                : () =>
+                      _exportPdf(professionalPerformance: false, print: false),
             icon: _exporting
                 ? const SizedBox(
                     width: 18,
@@ -110,7 +157,28 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.picture_as_pdf_outlined),
-            label: const Text('Izvezi PDF'),
+            label: const Text('Finansijski PDF'),
+          ),
+          FilledButton.tonalIcon(
+            onPressed: _report == null || _exporting
+                ? null
+                : () => _exportPdf(professionalPerformance: true, print: false),
+            icon: const Icon(Icons.groups_outlined),
+            label: const Text('Uspješnost PDF'),
+          ),
+          IconButton.filledTonal(
+            tooltip: 'Štampaj finansijski izvještaj',
+            onPressed: _report == null || _exporting
+                ? null
+                : () => _exportPdf(professionalPerformance: false, print: true),
+            icon: const Icon(Icons.print_outlined),
+          ),
+          IconButton.filledTonal(
+            tooltip: 'Štampaj izvještaj uspješnosti',
+            onPressed: _report == null || _exporting
+                ? null
+                : () => _exportPdf(professionalPerformance: true, print: true),
+            icon: const Icon(Icons.print),
           ),
         ],
       ),

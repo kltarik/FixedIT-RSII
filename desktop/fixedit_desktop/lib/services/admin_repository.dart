@@ -440,6 +440,29 @@ class AdminRepository {
     return Uint8List.fromList(response.data ?? const []);
   }
 
+  Future<Uint8List> downloadProfessionalPerformanceReport({
+    DateTime? from,
+    DateTime? to,
+    int? categoryId,
+  }) async {
+    final response = await api.request<List<int>>(
+      () => api.dio.get<List<int>>(
+        '/api/reports/professionals/performance/pdf',
+        queryParameters: _reportParameters(
+          from: from,
+          to: to,
+          categoryId: categoryId,
+        ),
+        options: Options(
+          responseType: ResponseType.bytes,
+          followRedirects: true,
+          maxRedirects: 3,
+        ),
+      ),
+    );
+    return Uint8List.fromList(response.data ?? const []);
+  }
+
   Future<PagedResult<NotificationItem>> getNotifications() async {
     final response = await api.request<Json>(
       () => api.dio.get<Json>(

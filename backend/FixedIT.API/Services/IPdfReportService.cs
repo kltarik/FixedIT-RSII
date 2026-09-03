@@ -5,4 +5,7 @@ namespace FixedIT.API.Services;
 public interface IPdfReportService
 {
     byte[] GenerateFinancialReport(FinancialReportDocumentData report);
+
+    byte[] GenerateProfessionalPerformanceReport(
+        ProfessionalPerformanceDocumentData report);
 }

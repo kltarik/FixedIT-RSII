@@ -106,7 +106,7 @@ public sealed class NotificationConsumer(
                 return;
             }
 
-            await emailService.SendAsync(notification, stoppingToken);
+            await SendWithRetryAsync(notification, stoppingToken);
             processedMessages.Add(notification.MessageId);
             channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
             logger.LogInformation(
@@ -131,6 +131,36 @@ public sealed class NotificationConsumer(
             if (channel.IsOpen)
             {
                 channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: false);
+            }
+        }
+    }
+
+    private async Task SendWithRetryAsync(
+        BaseNotificationMessage notification,
+        CancellationToken stoppingToken)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                await emailService.SendAsync(notification, stoppingToken);
+                return;
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+                when (attempt < _options.DeliveryRetryDelaysSeconds.Length)
+            {
+                var delaySeconds = _options.DeliveryRetryDelaysSeconds[attempt];
+                logger.LogWarning(
+                    exception,
+                    "Notification message {MessageId} failed on attempt {Attempt}. Retrying in {DelaySeconds} seconds.",
+                    notification.MessageId,
+                    attempt + 1,
+                    delaySeconds);
+                await Task.Delay(TimeSpan.FromSeconds(delaySeconds), stoppingToken);
             }
         }
     }

@@ -87,6 +87,9 @@ builder.Services
     .AddOptions<RabbitMqOptions>()
     .Bind(builder.Configuration.GetSection(RabbitMqOptions.SectionName))
     .ValidateDataAnnotations()
+    .Validate(
+        options => options.DeliveryRetryDelaysSeconds.All(delay => delay is >= 1 and <= 300),
+        "RabbitMQ:DeliveryRetryDelaysSeconds mora sadržavati vrijednosti od 1 do 300 sekundi.")
     .ValidateOnStart();
 builder.Services
     .AddOptions<PayPalOptions>()

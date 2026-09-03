@@ -14,7 +14,8 @@
     "ConnectionRetrySeconds": 5,
     "PrefetchCount": 1,
     "PublishConfirmTimeoutSeconds": 5,
-    "ProcessedMessageCacheSize": 10000
+    "ProcessedMessageCacheSize": 10000,
+    "DeliveryRetryDelaysSeconds": [1, 2, 4, 8]
   },
   "Smtp": {
     "Host": "",

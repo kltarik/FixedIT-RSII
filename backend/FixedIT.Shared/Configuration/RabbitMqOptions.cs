@@ -50,4 +50,8 @@ public sealed class RabbitMqOptions
 
     [Range(100, 1_000_000)]
     public int ProcessedMessageCacheSize { get; set; }
+
+    [MinLength(1)]
+    [MaxLength(10)]
+    public int[] DeliveryRetryDelaysSeconds { get; set; } = [];
 }

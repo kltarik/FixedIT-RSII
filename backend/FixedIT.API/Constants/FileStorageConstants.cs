@@ -8,4 +8,5 @@ public static class FileStorageConstants
     public const string PngExtension = ".png";
     public const string ProfilePicturesFolder = "profile-pictures";
     public const string PortfolioFolder = "portfolio";
+    public const string JobPostingsFolder = "job-postings";
 }

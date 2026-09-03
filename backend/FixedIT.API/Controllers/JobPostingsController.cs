@@ -96,4 +96,35 @@ public sealed class JobPostingsController(
             cancellationToken);
         return NoContent();
     }
+
+    [Authorize(Roles = RoleNames.Client)]
+    [Consumes("multipart/form-data")]
+    [HttpPost("{id:int}/images")]
+    public async Task<ActionResult<JobPostingImageResponse>> AddImage(
+        int id,
+        [FromForm] AddJobPostingImageRequest request,
+        CancellationToken cancellationToken)
+    {
+        var image = await jobPostingService.AddImageAsync(
+            User.GetUserId(),
+            id,
+            request,
+            cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, image);
+    }
+
+    [Authorize(Roles = RoleNames.Client)]
+    [HttpDelete("{id:int}/images/{imageId:int}")]
+    public async Task<IActionResult> DeleteImage(
+        int id,
+        int imageId,
+        CancellationToken cancellationToken)
+    {
+        await jobPostingService.DeleteImageAsync(
+            User.GetUserId(),
+            id,
+            imageId,
+            cancellationToken);
+        return NoContent();
+    }
 }

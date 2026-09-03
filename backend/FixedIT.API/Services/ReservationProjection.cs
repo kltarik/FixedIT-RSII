@@ -30,6 +30,10 @@ internal static class ReservationProjection
             reservation.Payment == null
                 ? null
                 : (PaymentStatus?)reservation.Payment.Status,
+            reservation.Review == null ? null : (int?)reservation.Review.Id,
+            reservation.Review == null ? null : (int?)reservation.Review.Rating,
+            reservation.Review == null ? null : reservation.Review.Comment,
+            reservation.Review == null ? null : (DateTime?)reservation.Review.CreatedAt,
             reservation.CreatedAt,
             reservation.UpdatedAt);
 }

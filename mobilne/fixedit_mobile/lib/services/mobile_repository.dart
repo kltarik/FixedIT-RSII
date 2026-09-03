@@ -144,6 +144,15 @@ class MobileRepository {
     return JobPosting.fromJson(r.data ?? const {});
   }
 
+  Future<void> addJobImage(int jobId, XFile image) async {
+    final form = FormData.fromMap({
+      'image': await MultipartFile.fromFile(image.path, filename: image.name),
+    });
+    await api.call<Json>(
+      () => api.dio.post<Json>('/api/jobs/$jobId/images', data: form),
+    );
+  }
+
   Future<Paged<JobOffer>> getOffers(int jobId) async {
     final r = await api.call<Json>(
       () => api.dio.get<Json>(

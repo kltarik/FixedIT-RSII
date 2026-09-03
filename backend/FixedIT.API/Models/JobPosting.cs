@@ -18,4 +18,5 @@ public class JobPosting
     public Category Category { get; set; } = null!;
     public City City { get; set; } = null!;
     public ICollection<JobOffer> Offers { get; set; } = [];
+    public ICollection<JobPostingImage> Images { get; set; } = [];
 }

@@ -1,4 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../core/models.dart';
@@ -151,13 +153,16 @@ class _JobsScreenState extends State<JobsScreen> {
     );
     if (input == null) return;
     try {
-      await widget.repository.createJob(
+      final job = await widget.repository.createJob(
         title: input.title,
         description: input.description,
         cityId: input.city,
         categoryId: input.category,
         budget: input.budget,
       );
+      for (final image in input.images) {
+        await widget.repository.addJobImage(job.id, image);
+      }
       await load();
     } catch (e) {
       if (mounted) await showFailure(context, e);
@@ -188,12 +193,14 @@ class _JobInput {
     this.city,
     this.category,
     this.budget,
+    this.images,
   );
   final String title;
   final String description;
   final int city;
   final int category;
   final double budget;
+  final List<XFile> images;
 }
 
 class _JobForm extends StatefulWidget {
@@ -210,6 +217,7 @@ class _JobFormState extends State<_JobForm> {
   final budget = TextEditingController();
   int? city;
   int? category;
+  final List<XFile> images = [];
   @override
   void dispose() {
     title.dispose();
@@ -279,6 +287,26 @@ class _JobFormState extends State<_JobForm> {
                   ? 'Unesite pozitivan budžet.'
                   : null,
             ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: images.length >= 5
+                  ? null
+                  : () async {
+                      final selected = await ImagePicker().pickMultiImage(
+                        imageQuality: 88,
+                        limit: 5 - images.length,
+                      );
+                      if (selected.isNotEmpty) {
+                        setState(() => images.addAll(selected));
+                      }
+                    },
+              icon: const Icon(Icons.add_photo_alternate_outlined),
+              label: Text(
+                images.isEmpty
+                    ? 'Dodaj fotografije (do 5)'
+                    : 'Odabrano fotografija: ${images.length}',
+              ),
+            ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: () {
@@ -291,6 +319,7 @@ class _JobFormState extends State<_JobForm> {
                       city!,
                       category!,
                       double.parse(budget.text),
+                      List.unmodifiable(images),
                     ),
                   );
                 }
@@ -366,6 +395,31 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(widget.job.description),
+                if (widget.job.imageUrls.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 170,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: widget.job.imageUrls.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemBuilder: (_, index) => ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: CachedNetworkImage(
+                          imageUrl:
+                              resolveNetworkUrl(widget.job.imageUrls[index]) ??
+                              '',
+                          width: 230,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, _, _) => const SizedBox(
+                            width: 230,
+                            child: Icon(Icons.broken_image_outlined),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 Text('${widget.job.categoryName} • ${widget.job.cityName}'),
                 Text(

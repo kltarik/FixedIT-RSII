@@ -59,4 +59,13 @@ public sealed record JobPostingDetailResponse(
     string ClientFirstName,
     string ClientLastName,
     string? ClientProfilePictureUrl,
-    int OfferCount);
+    int OfferCount,
+    IReadOnlyCollection<JobPostingImageResponse> Images);
+
+public sealed record JobPostingImageResponse(int Id, string ImageUrl, DateTime CreatedAt);
+
+public sealed class AddJobPostingImageRequest
+{
+    [Required]
+    public IFormFile Image { get; set; } = null!;
+}

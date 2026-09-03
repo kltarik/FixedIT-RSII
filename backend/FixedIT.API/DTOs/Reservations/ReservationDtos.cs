@@ -64,6 +64,10 @@ public sealed record ReservationResponse(
     string? CancellationReason,
     bool IsPaid,
     PaymentStatus? PaymentStatus,
+    int? ReviewId,
+    int? ReviewRating,
+    string? ReviewComment,
+    DateTime? ReviewCreatedAt,
     DateTime CreatedAt,
     DateTime UpdatedAt);
 

@@ -18,6 +18,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ProfessionalAvailability> ProfessionalAvailabilities => Set<ProfessionalAvailability>();
     public DbSet<PortfolioItem> PortfolioItems => Set<PortfolioItem>();
     public DbSet<JobPosting> JobPostings => Set<JobPosting>();
+    public DbSet<JobPostingImage> JobPostingImages => Set<JobPostingImage>();
     public DbSet<JobOffer> JobOffers => Set<JobOffer>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
     public DbSet<Payment> Payments => Set<Payment>();
@@ -311,6 +312,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
                 .WithMany(status => status.Reservations)
                 .HasForeignKey(reservation => reservation.Status)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<JobPostingImage>(entity =>
+        {
+            entity.HasQueryFilter(image => image.JobPosting.ClientUser.IsActive);
+            entity.Property(image => image.ImageUrl)
+                .HasMaxLength(DatabaseConstants.UrlMaxLength)
+                .IsRequired();
+            entity.Property(image => image.CreatedAt).HasColumnType("datetime2");
+            entity.HasOne(image => image.JobPosting)
+                .WithMany(job => job.Images)
+                .HasForeignKey(image => image.JobPostingId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<Payment>(entity =>

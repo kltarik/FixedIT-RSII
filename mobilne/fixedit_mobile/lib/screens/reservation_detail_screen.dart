@@ -81,6 +81,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(r.description),
+                  Text('Kategorija: ${r.categoryName}'),
                   const Divider(height: 28),
                   Text('Termin: ${dateTime.format(r.scheduledAt)}'),
                   Text('Trajanje: ${r.duration} minuta'),
@@ -99,6 +100,30 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
           ),
           const SizedBox(height: 8),
           ..._actions(r, professional),
+          if (r.reviewId != null) ...[
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Recenzija: ${r.reviewRating} / 5',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(r.reviewComment ?? ''),
+                    if (r.reviewCreatedAt != null)
+                      Text(
+                        dateTime.format(r.reviewCreatedAt!),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 80),
         ],
       ),
@@ -135,7 +160,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
         ),
       );
     }
-    if (!professional && r.status == 4) {
+    if (!professional && r.status == 4 && r.reviewId == null) {
       actions.add(
         Padding(
           padding: const EdgeInsets.only(top: 8),
@@ -226,6 +251,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
     if (value == null) return;
     try {
       await repository.createReview(widget.reservationId, value.$1, value.$2);
+      await load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Recenzija je objavljena.')),

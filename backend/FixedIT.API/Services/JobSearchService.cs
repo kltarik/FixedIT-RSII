@@ -62,7 +62,8 @@ public sealed class JobSearchService(
                 job.ClientUserId,
                 job.ClientUser.FirstName,
                 job.ClientUser.LastName,
-                job.ClientUser.ProfilePictureUrl))
+                job.ClientUser.ProfilePictureUrl,
+                job.Images.OrderBy(image => image.Id).Select(image => image.ImageUrl).ToArray()))
             .ToListAsync(cancellationToken);
 
         return new PagedResponse<JobSearchResponse>(

@@ -211,6 +211,7 @@ class JobPosting {
     required this.clientName,
     required this.createdAt,
     this.offerCount = 0,
+    this.imageUrls = const [],
   });
   final int id;
   final String title;
@@ -225,6 +226,7 @@ class JobPosting {
   final String clientName;
   final DateTime createdAt;
   final int offerCount;
+  final List<String> imageUrls;
   factory JobPosting.fromJson(Json j) => JobPosting(
     id: jInt(j, 'id'),
     title: jString(j, 'title'),
@@ -241,6 +243,9 @@ class JobPosting {
             .trim(),
     createdAt: jDate(j, 'createdAt'),
     offerCount: jInt(j, 'offerCount'),
+    imageUrls: (j['imageUrls'] as List<dynamic>? ?? const [])
+        .map((item) => item.toString())
+        .toList(),
   );
 }
 
@@ -319,6 +324,8 @@ class Reservation {
     required this.professionalId,
     required this.professionalUserId,
     required this.professionalName,
+    required this.categoryId,
+    required this.categoryName,
     required this.description,
     required this.scheduledAt,
     required this.duration,
@@ -326,6 +333,10 @@ class Reservation {
     required this.status,
     required this.isPaid,
     this.paymentStatus,
+    this.reviewId,
+    this.reviewRating,
+    this.reviewComment,
+    this.reviewCreatedAt,
     this.reason,
   });
   final int id;
@@ -334,6 +345,8 @@ class Reservation {
   final int professionalId;
   final String professionalUserId;
   final String professionalName;
+  final int categoryId;
+  final String categoryName;
   final String description;
   final DateTime scheduledAt;
   final int duration;
@@ -341,6 +354,10 @@ class Reservation {
   final int status;
   final bool isPaid;
   final int? paymentStatus;
+  final int? reviewId;
+  final int? reviewRating;
+  final String? reviewComment;
+  final DateTime? reviewCreatedAt;
   final String? reason;
   factory Reservation.fromJson(Json j) => Reservation(
     id: jInt(j, 'id'),
@@ -353,6 +370,8 @@ class Reservation {
     professionalName:
         '${jString(j, 'professionalFirstName')} ${jString(j, 'professionalLastName')}'
             .trim(),
+    categoryId: jInt(j, 'categoryId'),
+    categoryName: jString(j, 'categoryName'),
     description: jString(j, 'serviceDescription'),
     scheduledAt: jDate(j, 'scheduledAt'),
     duration: jInt(j, 'durationMinutes'),
@@ -360,6 +379,12 @@ class Reservation {
     status: jInt(j, 'status'),
     isPaid: jBool(j, 'isPaid'),
     paymentStatus: (j['paymentStatus'] as num?)?.toInt(),
+    reviewId: (j['reviewId'] as num?)?.toInt(),
+    reviewRating: (j['reviewRating'] as num?)?.toInt(),
+    reviewComment: j['reviewComment']?.toString(),
+    reviewCreatedAt: j['reviewCreatedAt'] == null
+        ? null
+        : jDate(j, 'reviewCreatedAt'),
     reason: j['cancellationReason']?.toString(),
   );
 }

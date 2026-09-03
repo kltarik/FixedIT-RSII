@@ -33,4 +33,16 @@ public interface IJobPostingService
         string clientUserId,
         int id,
         CancellationToken cancellationToken);
+
+    Task<JobPostingImageResponse> AddImageAsync(
+        string clientUserId,
+        int jobPostingId,
+        AddJobPostingImageRequest request,
+        CancellationToken cancellationToken);
+
+    Task DeleteImageAsync(
+        string clientUserId,
+        int jobPostingId,
+        int imageId,
+        CancellationToken cancellationToken);
 }

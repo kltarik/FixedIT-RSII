@@ -1,5 +1,6 @@
 using System.Data;
 using System.Linq.Expressions;
+using FixedIT.API.Constants;
 using FixedIT.API.CustomExceptions;
 using FixedIT.API.Data;
 using FixedIT.API.DTOs.Common;
@@ -12,7 +13,8 @@ namespace FixedIT.API.Services;
 
 public sealed class JobPostingService(
     AppDbContext db,
-    IPaginationService paginationService) : IJobPostingService
+    IPaginationService paginationService,
+    IFileUploadService fileUploadService) : IJobPostingService
 {
     private const string LockedJobPostingsSql =
         "SELECT * FROM [JobPostings] WITH (UPDLOCK, HOLDLOCK)";
@@ -32,7 +34,8 @@ public sealed class JobPostingService(
             job.ClientUserId,
             job.ClientUser.FirstName,
             job.ClientUser.LastName,
-            job.ClientUser.ProfilePictureUrl);
+            job.ClientUser.ProfilePictureUrl,
+            job.Images.OrderBy(image => image.Id).Select(image => image.ImageUrl).ToArray());
 
     public Task<PagedResponse<JobSearchResponse>> GetPageAsync(
         PagedRequest request,
@@ -63,7 +66,14 @@ public sealed class JobPostingService(
                 item.ClientUserId,
                 ClientFirstName = item.ClientUser.FirstName,
                 ClientLastName = item.ClientUser.LastName,
-                ClientProfilePictureUrl = item.ClientUser.ProfilePictureUrl
+                ClientProfilePictureUrl = item.ClientUser.ProfilePictureUrl,
+                Images = item.Images
+                    .OrderBy(image => image.Id)
+                    .Select(image => new JobPostingImageResponse(
+                        image.Id,
+                        image.ImageUrl,
+                        image.CreatedAt))
+                    .ToArray()
             })
             .SingleOrDefaultAsync(cancellationToken)
             ?? throw new NotFoundException("Oglas za posao nije pronađen.");
@@ -86,7 +96,8 @@ public sealed class JobPostingService(
             job.ClientFirstName,
             job.ClientLastName,
             job.ClientProfilePictureUrl,
-            offerCount);
+            offerCount,
+            job.Images);
     }
 
     public Task<PagedResponse<JobSearchResponse>> GetMineAsync(
@@ -176,9 +187,80 @@ public sealed class JobPostingService(
             throw new BusinessException("Oglas za posao koji ima ponude nije moguće izbrisati.");
         }
 
+        var imageUrls = await db.JobPostingImages
+            .Where(image => image.JobPostingId == job.Id)
+            .Select(image => image.ImageUrl)
+            .ToArrayAsync(cancellationToken);
         db.JobPostings.Remove(job);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        foreach (var imageUrl in imageUrls)
+        {
+            await fileUploadService.DeleteImageAsync(imageUrl);
+        }
+    }
+
+    public async Task<JobPostingImageResponse> AddImageAsync(
+        string clientUserId,
+        int jobPostingId,
+        AddJobPostingImageRequest request,
+        CancellationToken cancellationToken)
+    {
+        var ownsJob = await db.JobPostings.AnyAsync(
+            job => job.Id == jobPostingId && job.ClientUserId == clientUserId,
+            cancellationToken);
+        if (!ownsJob)
+        {
+            throw new NotFoundException("Oglas za posao nije pronađen.");
+        }
+
+        var imageCount = await db.JobPostingImages.CountAsync(
+            image => image.JobPostingId == jobPostingId,
+            cancellationToken);
+        if (imageCount >= 5)
+        {
+            throw new BusinessException("Oglas može sadržavati najviše pet fotografija.");
+        }
+
+        var stored = await fileUploadService.SaveImageAsync(
+            request.Image,
+            FileStorageConstants.JobPostingsFolder,
+            cancellationToken);
+        var image = new JobPostingImage
+        {
+            JobPostingId = jobPostingId,
+            ImageUrl = stored.PublicUrl,
+            CreatedAt = DateTime.UtcNow
+        };
+        try
+        {
+            db.JobPostingImages.Add(image);
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch
+        {
+            await fileUploadService.DeleteImageAsync(stored.PublicUrl);
+            throw;
+        }
+
+        return new JobPostingImageResponse(image.Id, image.ImageUrl, image.CreatedAt);
+    }
+
+    public async Task DeleteImageAsync(
+        string clientUserId,
+        int jobPostingId,
+        int imageId,
+        CancellationToken cancellationToken)
+    {
+        var image = await db.JobPostingImages.SingleOrDefaultAsync(
+            item => item.Id == imageId
+                && item.JobPostingId == jobPostingId
+                && item.JobPosting.ClientUserId == clientUserId,
+            cancellationToken)
+            ?? throw new NotFoundException("Fotografija oglasa nije pronađena.");
+        db.JobPostingImages.Remove(image);
+        await db.SaveChangesAsync(cancellationToken);
+        await fileUploadService.DeleteImageAsync(image.ImageUrl);
     }
 
     private async Task<PagedResponse<JobSearchResponse>> GetPageAsync(

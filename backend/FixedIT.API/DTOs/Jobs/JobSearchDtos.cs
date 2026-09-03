@@ -53,4 +53,5 @@ public sealed record JobSearchResponse(
     string ClientUserId,
     string ClientFirstName,
     string ClientLastName,
-    string? ClientProfilePictureUrl);
+    string? ClientProfilePictureUrl,
+    IReadOnlyCollection<string> ImageUrls);

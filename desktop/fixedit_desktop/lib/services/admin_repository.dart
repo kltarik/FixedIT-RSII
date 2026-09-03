@@ -193,6 +193,31 @@ class AdminRepository {
     return ReservationStatusRecord.fromJson(response.data ?? const {});
   }
 
+  Future<PagedResult<AdminReviewRecord>> getReviews({
+    int page = 1,
+    int? rating,
+    String? search,
+  }) async {
+    final response = await api.request<Json>(
+      () => api.dio.get<Json>(
+        '/api/admin/reviews',
+        queryParameters: {
+          'page': page,
+          'pageSize': 20,
+          'rating': ?rating,
+          if (search?.isNotEmpty ?? false) 'search': search,
+        },
+      ),
+    );
+    return PagedResult.fromJson(
+      response.data ?? const {},
+      AdminReviewRecord.fromJson,
+    );
+  }
+
+  Future<void> deleteReview(int id) =>
+      api.request<void>(() => api.dio.delete<void>('/api/admin/reviews/$id'));
+
   Future<PagedResult<AdminUserRecord>> getUsers({int page = 1}) async {
     final response = await api.request<Json>(
       () => api.dio.get<Json>(

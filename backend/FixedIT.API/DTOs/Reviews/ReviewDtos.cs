@@ -26,3 +26,22 @@ public sealed record ReviewResponse(
     int Rating,
     string Comment,
     DateTime CreatedAt);
+
+public sealed class AdminReviewFilterRequest
+{
+    [Range(DatabaseConstants.RatingMinimum, DatabaseConstants.RatingMaximum)]
+    public int? Rating { get; init; }
+
+    [MaxLength(DatabaseConstants.NameMaxLength)]
+    public string? Search { get; init; }
+}
+
+public sealed record AdminReviewResponse(
+    int Id,
+    int ReservationId,
+    int ProfessionalProfileId,
+    string ClientName,
+    string ProfessionalName,
+    int Rating,
+    string Comment,
+    DateTime CreatedAt);

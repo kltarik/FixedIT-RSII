@@ -15,6 +15,11 @@ public interface IReviewService
         PagedRequest request,
         CancellationToken cancellationToken);
 
+    Task<PagedResponse<AdminReviewResponse>> GetAdminPageAsync(
+        AdminReviewFilterRequest filters,
+        PagedRequest request,
+        CancellationToken cancellationToken);
+
     Task DeleteAsync(
         string adminUserId,
         int reviewId,

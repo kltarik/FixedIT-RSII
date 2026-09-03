@@ -116,6 +116,38 @@ class ReservationStatusRecord {
       );
 }
 
+class AdminReviewRecord {
+  const AdminReviewRecord({
+    required this.id,
+    required this.reservationId,
+    required this.professionalProfileId,
+    required this.clientName,
+    required this.professionalName,
+    required this.rating,
+    required this.comment,
+    required this.createdAt,
+  });
+  final int id;
+  final int reservationId;
+  final int professionalProfileId;
+  final String clientName;
+  final String professionalName;
+  final int rating;
+  final String comment;
+  final DateTime createdAt;
+
+  factory AdminReviewRecord.fromJson(Json json) => AdminReviewRecord(
+    id: jsonInt(json, 'id'),
+    reservationId: jsonInt(json, 'reservationId'),
+    professionalProfileId: jsonInt(json, 'professionalProfileId'),
+    clientName: jsonString(json, 'clientName'),
+    professionalName: jsonString(json, 'professionalName'),
+    rating: jsonInt(json, 'rating'),
+    comment: jsonString(json, 'comment'),
+    createdAt: jsonDate(json, 'createdAt'),
+  );
+}
+
 class AuthUser {
   const AuthUser({
     required this.id,

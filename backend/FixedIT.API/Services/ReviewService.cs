@@ -145,6 +145,48 @@ public sealed class ReviewService(
             page.PageSize);
     }
 
+    public async Task<PagedResponse<AdminReviewResponse>> GetAdminPageAsync(
+        AdminReviewFilterRequest filters,
+        PagedRequest request,
+        CancellationToken cancellationToken)
+    {
+        var page = paginationService.Normalize(request);
+        var query = db.Reviews.IgnoreQueryFilters().AsNoTracking();
+        if (filters.Rating.HasValue)
+        {
+            query = query.Where(review => review.Rating == filters.Rating.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filters.Search))
+        {
+            var search = filters.Search.Trim();
+            query = query.Where(review =>
+                review.Comment.Contains(search)
+                || review.ClientUser.FirstName.Contains(search)
+                || review.ClientUser.LastName.Contains(search)
+                || review.ProfessionalProfile.User.FirstName.Contains(search)
+                || review.ProfessionalProfile.User.LastName.Contains(search));
+        }
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderByDescending(review => review.CreatedAt)
+            .ThenByDescending(review => review.Id)
+            .Skip(page.Skip)
+            .Take(page.PageSize)
+            .Select(review => new AdminReviewResponse(
+                review.Id,
+                review.ReservationId,
+                review.ProfessionalProfileId,
+                review.ClientUser.FirstName + " " + review.ClientUser.LastName,
+                review.ProfessionalProfile.User.FirstName + " " + review.ProfessionalProfile.User.LastName,
+                review.Rating,
+                review.Comment,
+                review.CreatedAt))
+            .ToArrayAsync(cancellationToken);
+        return new PagedResponse<AdminReviewResponse>(items, total, page.Page, page.PageSize);
+    }
+
     public async Task DeleteAsync(
         string adminUserId,
         int reviewId,

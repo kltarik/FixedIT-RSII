@@ -43,9 +43,9 @@ internal sealed class PaymentService(
             throw new NotFoundException("Rezervacija nije pronađena.");
         }
 
-        if (reservation.Status is ReservationStatus.Cancelled or ReservationStatus.Completed)
+        if (reservation.Status != ReservationStatus.Completed)
         {
-            throw new BusinessException("Ovu rezervaciju više nije moguće platiti.");
+            throw new BusinessException("Plaćanje je dostupno tek nakon završetka rezervacije.");
         }
 
         if (reservation.Payment is not null)
@@ -125,9 +125,9 @@ internal sealed class PaymentService(
         }
 
         var payment = reservation.Payment!;
-        if (reservation.Status == ReservationStatus.Cancelled)
+        if (reservation.Status != ReservationStatus.Completed)
         {
-            throw new BusinessException("Otkazanu rezervaciju nije moguće platiti.");
+            throw new BusinessException("Plaćanje je dostupno tek nakon završetka rezervacije.");
         }
 
         if (payment.Status == PaymentStatus.Completed)

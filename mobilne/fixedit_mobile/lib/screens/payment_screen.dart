@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/models.dart';
 import '../services/mobile_repository.dart';
@@ -8,7 +8,9 @@ import '../widgets/common.dart';
 
 class PaymentScreen extends StatefulWidget {
   const PaymentScreen({super.key, required this.reservationId});
+
   final int reservationId;
+
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
 }
@@ -17,8 +19,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   PaymentOrder? order;
   String? error;
   bool loading = true;
-  bool opened = false;
   bool capturing = false;
+
   @override
   void initState() {
     super.initState();
@@ -30,31 +32,56 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final value = await context.read<MobileRepository>().createPaymentOrder(
         widget.reservationId,
       );
-      if (mounted) setState(() => order = value);
-    } catch (e) {
-      if (mounted) setState(() => error = userError(e));
+      if (mounted) {
+        setState(() {
+          order = value;
+          error = null;
+        });
+      }
+    } catch (exception) {
+      if (mounted) setState(() => error = userError(exception));
     } finally {
       if (mounted) setState(() => loading = false);
     }
   }
 
-  Future<void> approve() async {
-    final uri = Uri.tryParse(order!.approvalUrl);
-    if (uri == null || uri.scheme != 'https') {
-      setState(() => error = 'PayPal nije vratio sigurnu adresu za odobrenje.');
-      return;
-    }
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (mounted) {
-      setState(() {
-        opened = launched;
-        if (!launched) error = 'PayPal stranica se nije mogla otvoriti.';
-      });
-    }
+  bool _isRedirect(WebUri? url, String segment) {
+    if (url == null) return false;
+    return url.path.toLowerCase().endsWith('/payments/$segment');
   }
 
-  Future<void> capture() async {
-    setState(() => capturing = true);
+  Future<NavigationActionPolicy> _handleNavigation(
+    InAppWebViewController controller,
+    NavigationAction action,
+  ) async {
+    final url = action.request.url;
+    if (_isRedirect(url, 'cancelled')) {
+      await controller.stopLoading();
+      if (mounted) Navigator.pop(context, false);
+      return NavigationActionPolicy.CANCEL;
+    }
+
+    if (_isRedirect(url, 'success')) {
+      await controller.stopLoading();
+      await capture(url);
+      return NavigationActionPolicy.CANCEL;
+    }
+
+    return NavigationActionPolicy.ALLOW;
+  }
+
+  Future<void> capture(WebUri? returnUrl) async {
+    if (capturing || order == null) return;
+    final returnedOrderId = returnUrl?.queryParameters['token'];
+    if (returnedOrderId != null && returnedOrderId != order!.orderId) {
+      setState(() => error = 'PayPal je vratio neočekivani nalog za plaćanje.');
+      return;
+    }
+
+    setState(() {
+      capturing = true;
+      error = null;
+    });
     try {
       await context.read<MobileRepository>().capturePayment(order!.orderId);
       if (mounted) {
@@ -63,10 +90,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
         );
         Navigator.pop(context, true);
       }
-    } catch (e) {
-      if (mounted) setState(() => error = userError(e));
-    } finally {
-      if (mounted) setState(() => capturing = false);
+    } catch (exception) {
+      if (mounted) {
+        setState(() {
+          error = userError(exception);
+          capturing = false;
+        });
+      }
     }
   }
 
@@ -77,53 +107,51 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ? const LoadingView()
         : error != null && order == null
         ? ErrorView(error!, create)
-        : Padding(
-            padding: const EdgeInsets.all(22),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Icon(Icons.paypal, size: 72),
-                const SizedBox(height: 20),
-                Text(
-                  '${money.format(order!.amount)} ${order!.currency}',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.displaySmall,
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'PayPal autorizacija se otvara u sigurnom pregledniku. FixedIT mobilna aplikacija nikada ne prima niti sadrži PayPal tajnu.',
-                  textAlign: TextAlign.center,
-                ),
-                if (error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 14),
-                    child: Text(
-                      error!,
-                      style: const TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
+        : Column(
+            children: [
+              if (capturing) const LinearProgressIndicator(),
+              if (error != null)
+                MaterialBanner(
+                  content: Text(error!),
+                  actions: [
+                    TextButton(
+                      onPressed: () => setState(() => error = null),
+                      child: const Text('Zatvori'),
                     ),
-                  ),
-                const Spacer(),
-                FilledButton.icon(
-                  onPressed: approve,
-                  icon: const Icon(Icons.open_in_browser),
-                  label: Text(
-                    opened ? 'Ponovo otvori PayPal' : 'Otvori PayPal',
+                  ],
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                child: Text(
+                  '${money.format(order!.amount)} ${order!.currency}',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              Expanded(
+                child: IgnorePointer(
+                  ignoring: capturing,
+                  child: InAppWebView(
+                    initialUrlRequest: URLRequest(
+                      url: WebUri(order!.approvalUrl),
+                    ),
+                    initialSettings: InAppWebViewSettings(
+                      useShouldOverrideUrlLoading: true,
+                      javaScriptEnabled: true,
+                    ),
+                    shouldOverrideUrlLoading: _handleNavigation,
+                    onReceivedError: (_, request, webError) {
+                      if (request.isForMainFrame == true && mounted) {
+                        setState(() {
+                          error =
+                              'PayPal stranica se nije mogla učitati: '
+                              '${webError.description}';
+                        });
+                      }
+                    },
                   ),
                 ),
-                const SizedBox(height: 10),
-                FilledButton.tonalIcon(
-                  onPressed: !opened || capturing ? null : capture,
-                  icon: const Icon(Icons.verified_outlined),
-                  label: Text(
-                    capturing
-                        ? 'Potvrđivanje...'
-                        : 'Platio/la sam, potvrdi uplatu',
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-            ),
+              ),
+            ],
           ),
   );
 }

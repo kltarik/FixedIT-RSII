@@ -157,7 +157,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
     if (professional && r.status == 3) {
       actions.add(_action('Označi završeno', 'complete', Icons.task_alt));
     }
-    if (!professional && r.status == 2 && !r.isPaid) {
+    if (!professional && r.status == 4 && !r.isPaid) {
       actions.add(
         Padding(
           padding: const EdgeInsets.only(top: 8),

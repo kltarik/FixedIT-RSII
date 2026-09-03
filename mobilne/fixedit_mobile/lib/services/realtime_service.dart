@@ -105,13 +105,37 @@ class RealtimeNotifications extends ChangeNotifier {
 
   Future<void> markRead(NotificationItem item) async {
     await repository.markNotificationRead(item.id);
-    items = items.where((e) => e.id != item.id).toList();
+    items = items
+        .map(
+          (current) => current.id == item.id
+              ? NotificationItem(
+                  current.id,
+                  current.title,
+                  current.body,
+                  true,
+                  current.createdAt,
+                  current.type,
+                )
+              : current,
+        )
+        .toList();
     notifyListeners();
   }
 
   Future<void> markAllRead() async {
     await repository.markAllNotificationsRead();
-    items = const [];
+    items = items
+        .map(
+          (item) => NotificationItem(
+            item.id,
+            item.title,
+            item.body,
+            true,
+            item.createdAt,
+            item.type,
+          ),
+        )
+        .toList();
     notifyListeners();
   }
 

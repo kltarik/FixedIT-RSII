@@ -124,6 +124,22 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
               ),
             ),
           ],
+          if (r.statusHistory.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Tok rezervacije',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            for (final history in r.statusHistory)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.history),
+                title: Text(reservationStatus(history.newStatus)),
+                subtitle: Text(
+                  '${dateTime.format(history.changedAt)}${history.reason == null ? '' : '\nRazlog: ${history.reason}'}',
+                ),
+              ),
+          ],
           const SizedBox(height: 80),
         ],
       ),

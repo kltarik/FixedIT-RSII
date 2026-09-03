@@ -133,6 +133,13 @@ public sealed class ReservationService(
             CreatedAt = now,
             UpdatedAt = now
         };
+        reservation.StatusHistory.Add(new ReservationStatusHistory
+        {
+            PreviousStatus = null,
+            NewStatus = ReservationStatus.Pending,
+            ChangedByUserId = clientUserId,
+            ChangedAt = now
+        });
         db.Reservations.Add(reservation);
         await db.SaveChangesAsync(cancellationToken);
 

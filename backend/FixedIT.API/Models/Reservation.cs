@@ -23,5 +23,6 @@ public class Reservation
     public ReservationStatusDefinition StatusDefinition { get; set; } = null!;
     public Payment? Payment { get; set; }
     public Review? Review { get; set; }
+    public ICollection<ReservationStatusHistory> StatusHistory { get; set; } = [];
     public Conversation? Conversation { get; set; }
 }

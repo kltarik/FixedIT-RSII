@@ -24,7 +24,7 @@ public sealed class NotificationService(
             notification.CreatedAt,
             notification.Type);
 
-    public async Task<PagedResponse<NotificationResponse>> GetUnreadAsync(
+    public async Task<PagedResponse<NotificationResponse>> GetPageAsync(
         string userId,
         PagedRequest request,
         CancellationToken cancellationToken)
@@ -32,7 +32,7 @@ public sealed class NotificationService(
         var page = paginationService.Normalize(request);
         var query = db.Notifications
             .AsNoTracking()
-            .Where(notification => notification.UserId == userId && !notification.IsRead);
+            .Where(notification => notification.UserId == userId);
         var total = await query.CountAsync(cancellationToken);
         var items = await query
             .OrderByDescending(notification => notification.CreatedAt)

@@ -25,7 +25,7 @@ class NotificationsScreen extends StatelessWidget {
             ? const LoadingView()
             : service.items.isEmpty
             ? EmptyView(
-                service.error ?? 'Nema nepročitanih obavijesti.',
+                service.error ?? 'Nema obavijesti.',
                 icon: Icons.notifications_none,
               )
             : ListView.separated(
@@ -36,14 +36,21 @@ class NotificationsScreen extends StatelessWidget {
                   final item = service.items[index];
                   return ListTile(
                     onTap: () => service.markRead(item),
-                    leading: const CircleAvatar(
-                      child: Icon(Icons.notifications_outlined),
+                    leading: CircleAvatar(
+                      child: Icon(
+                        item.isRead
+                            ? Icons.notifications_none
+                            : Icons.notifications_active_outlined,
+                      ),
                     ),
                     title: Text(item.title),
                     subtitle: Text(
                       '${item.body}\n${dateTime.format(item.createdAt)}',
                     ),
                     isThreeLine: true,
+                    trailing: item.isRead
+                        ? const Icon(Icons.done_all, size: 18)
+                        : null,
                   );
                 },
               ),

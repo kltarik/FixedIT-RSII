@@ -337,6 +337,7 @@ class Reservation {
     this.reviewRating,
     this.reviewComment,
     this.reviewCreatedAt,
+    this.statusHistory = const [],
     this.reason,
   });
   final int id;
@@ -358,6 +359,7 @@ class Reservation {
   final int? reviewRating;
   final String? reviewComment;
   final DateTime? reviewCreatedAt;
+  final List<ReservationStatusHistory> statusHistory;
   final String? reason;
   factory Reservation.fromJson(Json j) => Reservation(
     id: jInt(j, 'id'),
@@ -385,8 +387,32 @@ class Reservation {
     reviewCreatedAt: j['reviewCreatedAt'] == null
         ? null
         : jDate(j, 'reviewCreatedAt'),
+    statusHistory: jList(
+      j,
+      'statusHistory',
+    ).map(ReservationStatusHistory.fromJson).toList(),
     reason: j['cancellationReason']?.toString(),
   );
+}
+
+class ReservationStatusHistory {
+  const ReservationStatusHistory({
+    required this.newStatus,
+    required this.changedAt,
+    this.previousStatus,
+    this.reason,
+  });
+  final int? previousStatus;
+  final int newStatus;
+  final String? reason;
+  final DateTime changedAt;
+  factory ReservationStatusHistory.fromJson(Json json) =>
+      ReservationStatusHistory(
+        previousStatus: (json['previousStatus'] as num?)?.toInt(),
+        newStatus: jInt(json, 'newStatus'),
+        reason: json['reason']?.toString(),
+        changedAt: jDate(json, 'changedAt'),
+      );
 }
 
 String reservationStatus(int value) => switch (value) {

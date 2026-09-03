@@ -327,7 +327,7 @@ class _NotificationDialog extends StatelessWidget {
             : notifications.error != null && notifications.items.isEmpty
             ? Center(child: Text(notifications.error!))
             : notifications.items.isEmpty
-            ? const Center(child: Text('Nema nepročitanih obavijesti.'))
+            ? const Center(child: Text('Nema obavijesti.'))
             : ListView.separated(
                 itemCount: notifications.items.length,
                 separatorBuilder: (_, _) => const Divider(height: 1),

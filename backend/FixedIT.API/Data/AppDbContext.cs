@@ -21,6 +21,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<JobPostingImage> JobPostingImages => Set<JobPostingImage>();
     public DbSet<JobOffer> JobOffers => Set<JobOffer>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
+    public DbSet<ReservationStatusHistory> ReservationStatusHistories => Set<ReservationStatusHistory>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
@@ -526,6 +527,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.HasOne(token => token.User)
                 .WithMany(user => user.RefreshTokens)
                 .HasForeignKey(token => token.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ReservationStatusHistory>(entity =>
+        {
+            entity.HasQueryFilter(history =>
+                history.Reservation.ClientUser.IsActive
+                && history.Reservation.ProfessionalProfile.User.IsActive);
+            entity.Property(history => history.Reason)
+                .HasMaxLength(DatabaseConstants.ShortTextMaxLength);
+            entity.Property(history => history.ChangedByUserId)
+                .HasMaxLength(DatabaseConstants.UserIdMaxLength)
+                .IsRequired();
+            entity.Property(history => history.ChangedAt).HasColumnType("datetime2");
+            entity.HasIndex(history => new { history.ReservationId, history.ChangedAt });
+            entity.HasOne(history => history.Reservation)
+                .WithMany(reservation => reservation.StatusHistory)
+                .HasForeignKey(history => history.ReservationId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

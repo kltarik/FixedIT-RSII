@@ -14,6 +14,7 @@ public static class DatabaseConstants
     public const int ActionMaxLength = 20;
     public const int EntityTypeMaxLength = 100;
     public const int TokenHashMaxLength = 64;
+    public const int UserIdMaxLength = 450;
     public const int DecimalPrecision = 18;
     public const int DecimalScale = 2;
     public const int RatingMinimum = 1;

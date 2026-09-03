@@ -62,6 +62,14 @@ public sealed class ReservationStateService(
         reservation.Status = newStatus;
         reservation.UpdatedAt = now;
         reservation.CancellationReason = normalizedReason;
+        reservation.StatusHistory.Add(new ReservationStatusHistory
+        {
+            PreviousStatus = previousStatus,
+            NewStatus = newStatus,
+            ChangedByUserId = userId,
+            Reason = normalizedReason,
+            ChangedAt = now
+        });
 
         db.AuditLogs.Add(new AuditLog
         {

@@ -69,7 +69,16 @@ public sealed record ReservationResponse(
     string? ReviewComment,
     DateTime? ReviewCreatedAt,
     DateTime CreatedAt,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt,
+    IReadOnlyCollection<ReservationStatusHistoryResponse> StatusHistory);
+
+public sealed record ReservationStatusHistoryResponse(
+    int Id,
+    ReservationStatus? PreviousStatus,
+    ReservationStatus NewStatus,
+    string ChangedByUserId,
+    string? Reason,
+    DateTime ChangedAt);
 
 public sealed class AvailableSlotsRequest
 {

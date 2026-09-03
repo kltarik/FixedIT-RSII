@@ -35,5 +35,16 @@ internal static class ReservationProjection
             reservation.Review == null ? null : reservation.Review.Comment,
             reservation.Review == null ? null : (DateTime?)reservation.Review.CreatedAt,
             reservation.CreatedAt,
-            reservation.UpdatedAt);
+            reservation.UpdatedAt,
+            reservation.StatusHistory
+                .OrderBy(history => history.ChangedAt)
+                .ThenBy(history => history.Id)
+                .Select(history => new ReservationStatusHistoryResponse(
+                    history.Id,
+                    history.PreviousStatus,
+                    history.NewStatus,
+                    history.ChangedByUserId,
+                    history.Reason,
+                    history.ChangedAt))
+                .ToArray());
 }

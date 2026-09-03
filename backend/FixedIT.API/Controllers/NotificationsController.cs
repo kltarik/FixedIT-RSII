@@ -14,11 +14,11 @@ public sealed class NotificationsController(INotificationService notificationSer
     : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<PagedResponse<NotificationResponse>>> GetUnread(
+    public async Task<ActionResult<PagedResponse<NotificationResponse>>> GetPage(
         [FromQuery] PagedRequest request,
         CancellationToken cancellationToken)
     {
-        return Ok(await notificationService.GetUnreadAsync(
+        return Ok(await notificationService.GetPageAsync(
             User.GetUserId(),
             request,
             cancellationToken));

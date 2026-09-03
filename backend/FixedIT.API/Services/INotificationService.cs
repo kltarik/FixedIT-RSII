@@ -14,7 +14,7 @@ public sealed record CreateNotificationCommand(
 
 public interface INotificationService
 {
-    Task<PagedResponse<NotificationResponse>> GetUnreadAsync(
+    Task<PagedResponse<NotificationResponse>> GetPageAsync(
         string userId,
         PagedRequest request,
         CancellationToken cancellationToken);

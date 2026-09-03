@@ -17,4 +17,5 @@ public sealed record RecommendationResponse(
     decimal AverageRating,
     float PredictedRating,
     bool IsPersonalized,
-    IReadOnlyCollection<CategorySummaryResponse> Categories);
+    IReadOnlyCollection<CategorySummaryResponse> Categories,
+    string Explanation);

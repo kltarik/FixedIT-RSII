@@ -113,7 +113,7 @@ flutter run -d windows --dart-define=API_BASE_URL=http://localhost:5000
 
 ## 5. Model podataka
 
-Glavni entiteti su `User`, `Role`, `City`, `ProfessionalProfile`, `Category`, `ProfessionalCategory`, `PortfolioItem`, `JobPosting`, `JobOffer`, `Reservation`, `Payment`, `Review`, `UserRating`, `Conversation`, `ConversationParticipant`, `Message`, `Notification`, `AuditLog` i `RefreshToken`.
+Glavni entiteti su `User`, `Role`, `City`, `ProfessionalProfile`, `Category`, `ProfessionalCategory`, `PortfolioItem`, `JobPosting`, `JobOffer`, `Reservation`, `Payment`, `Review`, `UserRating`, `RecommendationActivity`, `Conversation`, `ConversationParticipant`, `Message`, `Notification`, `AuditLog` i `RefreshToken`.
 
 ```mermaid
 erDiagram
@@ -250,9 +250,9 @@ SignalR endpointi su `/hubs/chat` i `/hubs/notifications`. Chat hub izlaže `Joi
 
 ## 8. Sistem preporuke
 
-ML.NET koristi `MatrixFactorizationTrainer`. Ulaz je trojka korisnik-profesionalac-ocjena iz `UserRatings`; korisnički i profesionalni identifikatori pretvaraju se u key kolone, a model predviđa ocjenu od 1 do 5. Zadane vrijednosti su 20 iteracija, rank 100, seed 42 i najmanje 5 ocjena.
+ML.NET koristi `MatrixFactorizationTrainer`. Ulaz su trojke korisnik-profesionalac-signal: rezervacija koja nije otkazana ima težinu 5, pregled profila 2, a pretraga kategorije 1. Korisnički i profesionalni identifikatori pretvaraju se u key kolone. Zadane vrijednosti su 20 iteracija, rank 100, seed 42 i najmanje 5 signala.
 
-`ModelRetrainingService` je `BackgroundService`. Model trenira pri pokretanju i zatim svakih 24 sata, koristeći novi scoped `AppDbContext`. Prilikom čitanja preporuka API uzima ograničen skup kandidata iz baze, koristi predviđenu ocjenu za poznate korisnike/profesionalce, a za cold-start slučaj koristi prosječnu ocjenu, broj recenzija i stabilan redoslijed. Rezultat se straniči pomoću `Skip/Take`.
+`ModelRetrainingService` je `BackgroundService`. Model trenira pri pokretanju i zatim svakih 24 sata, koristeći novi scoped `AppDbContext`. API razmatra samo verifikovane profesionalce, koristi predikciju za poznate korisnike/profesionalce, a cold-start rang računa iz prosječne ocjene i broja završenih rezervacija. Svaki rezultat sadrži konkretno objašnjenje zasnovano na prethodnoj rezervaciji, pregledu profila, interesu za kategoriju ili javnoj reputaciji.
 
 ## 9. Klijentske aplikacije
 

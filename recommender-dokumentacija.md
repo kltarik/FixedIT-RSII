@@ -2,98 +2,64 @@
 
 ## 1. Problem koji sistem rješava
 
-FixedIT klijentima prikazuje rangiranu listu profesionalaca. Cilj sistema preporuke je da profesionalce pored opće reputacije poreda i prema procijenjenoj ocjeni koju bi konkretni klijent mogao dati konkretnom profesionalcu.
+Sistem rangira verifikovane profesionalce za prijavljenog klijenta. Cilj je da klijent prvo vidi profesionalce povezane s njegovim stvarnim ponašanjem u aplikaciji, a da novi korisnik i dalje dobije smislen poredak.
 
-Personalizacija se zasniva na prethodnim ocjenama klijenata. Kada nema dovoljno podataka za trening, korisnik još nije poznat modelu ili profesionalac nije bio prisutan u trening podacima, sistem kao rezervnu vrijednost koristi prosječnu javnu ocjenu profesionalca. Endpoint zato ostaje funkcionalan i za nove korisnike.
+## 2. Algoritam
 
-## 2. Odabrani algoritam
+Implementiran je ML.NET `MatrixFactorizationTrainer`. `UserId` i `ProfessionalProfileId` mapiraju se u key kolone, a vrijednost interakcije koristi se kao `Label`. Parametri modela (`Seed`, `NumberOfIterations`, `ApproximationRank`, `MinimumTrainingRatings`, `RetrainingIntervalHours` i `CandidatePoolSize`) dolaze iz konfiguracijske sekcije `Recommendations`.
 
-Implementiran je ML.NET `MatrixFactorizationTrainer`. Matrična faktorizacija modelira rijetku matricu u kojoj redovi predstavljaju profesionalce, kolone korisnike, a poznate vrijednosti njihove ocjene od 1 do 5.
+## 3. Ulazni podaci i težine
 
-Prije treniranja ML.NET transformacije `MapValueToKey` kodiraju tekstualni `UserId` i identifikator profesionalnog profila u ključne kolone. Trener zatim uči latentne reprezentacije korisnika i profesionalaca i iz njih procjenjuje nedostajuće ocjene.
+Trening kombinuje tri vrste ponašanja:
 
-Parametri dolaze iz sekcije `Recommendations` u konfiguraciji:
+| Signal | Izvor | Težina |
+|---|---|---:|
+| Rezervacija koja nije otkazana | `Reservations` | 5 |
+| Pregled detalja profesionalca | `RecommendationActivities`, `ProfileView` | 2 |
+| Pretraga po kategoriji | `RecommendationActivities`, `CategorySearch` | 1 |
 
-| Parametar | Zadana vrijednost | Namjena |
-|---|---:|---|
-| `Seed` | 42 | Ponovljivost treninga |
-| `NumberOfIterations` | 20 | Broj iteracija optimizacije |
-| `ApproximationRank` | 100 | Broj latentnih faktora |
-| `MinimumTrainingRatings` | 5 | Minimalan broj ocjena za trening |
-| `RetrainingIntervalHours` | 24 | Period između ponovnih treninga |
-| `CandidatePoolSize` | 200 | Maksimalan broj kandidata za rangiranje |
+Za pretragu kategorije signal se tokom pripreme treninga povezuje sa svim trenutno verifikovanim profesionalcima koji nude tu kategoriju. Otkazane rezervacije i neverifikovani profesionalci ne ulaze u trening. Recenzije se i dalje čuvaju u `UserRatings` radi evidencije postojeće funkcionalnosti, ali nisu ulaz u ovaj model aktivnosti.
 
-## 3. Ulazni podaci i signali
+## 4. Trening i ponovno treniranje
 
-Trening koristi zapise iz tabele `UserRatings`. Svaki zapis se u `ModelRetrainingService` mapira u `UserRatingData` sa sljedećim poljima:
+`ModelRetrainingService` je ASP.NET Core `BackgroundService`. Model trenira odmah nakon pokretanja API-ja i zatim periodično, prema `RetrainingIntervalHours` (zadano 24 sata). Za svaki ciklus kreira se DI scope i koristi scoped `AppDbContext`.
 
-| Polje | Izvor | Uloga u modelu |
-|---|---|---|
-| `UserId` | Klijent koji je ostavio recenziju | Identifikator korisničke kolone |
-| `ProfessionalId` | `ProfessionalProfileId`, pretvoren u string | Identifikator profesionalnog reda |
-| `Label` | Ocjena od 1 do 5 | Vrijednost koju model uči i predviđa |
-
-`UserRating` nastaje kada klijent ostavi recenziju za završenu rezervaciju. Zapis u bazi sadrži i `ReviewId` te UTC vrijeme nastanka, ali ta polja nisu proslijeđena ML.NET treningu.
-
-`reservationId`, opis usluge, tekst recenzije, kategorija, grad, cijena, trajanje rezervacije i datum nisu ulazne karakteristike trenutnog modela. Kategorije i ostali podaci profesionalca vraćaju se klijentu kao dio rezultata, ali ne utiču na ML.NET predikciju.
-
-Seed podaci sadrže pet završenih rezervacija i pripadajuće ocjene. Time je ispunjen zadani minimum od pet ocjena potreban za početni trening.
-
-## 4. Treniranje i ponovno treniranje
-
-`RecommendationService` je registrovan kao singleton jer trenirani model mora biti dostupan između HTTP zahtjeva i ne smije zavisiti od životnog vijeka `AppDbContext` instance. Pristup `PredictionEngine` instanci, zamjena modela i predikcija zaštićeni su zaključavanjem.
-
-`ModelRetrainingService` je ASP.NET Core `BackgroundService`. Pri pokretanju API-ja odmah izvršava trening, a zatim koristi `PeriodicTimer` i ponavlja ga svakih `RetrainingIntervalHours`, odnosno svakih 24 sata sa zadanom konfiguracijom.
-
-Za svaki trening servis kreira novi DI scope, iz scoped `AppDbContext` instance učita sve `UserRatings` zapise pomoću `AsNoTracking`, mapira ih u `UserRatingData` i pozove `TrainModel`. Ako ima manje od `MinimumTrainingRatings` zapisa, postojeći model se ne zamjenjuje i trening se preskače uz upozorenje u logu.
-
-Nakon uspješnog treninga servis pamti identifikatore korisnika i profesionalaca koji su bili prisutni u skupu podataka, broj korištenih ocjena i UTC vrijeme treninga. Novi model atomski zamjenjuje prethodni unutar zaključane sekcije.
+Ako ukupan broj signala ne dostigne `MinimumTrainingRatings`, trening se preskače. Uspješno istreniran model i skup poznatih korisnika/profesionalaca zamjenjuju prethodno stanje unutar zaključane sekcije singleton servisa.
 
 ## 5. Generisanje preporuka
 
-Zaštićeni endpoint `GET /api/recommendations` dostupan je klijentima i vraća paginirani rezultat.
+Endpoint `GET /api/recommendations` dostupan je klijentu i razmatra najviše `CandidatePoolSize` verifikovanih profesionalaca. Za poznatog korisnika i profesionalca koristi se ML.NET predikcija. Rezultati se zatim stabilno sortiraju po izračunatom rangu, javnoj ocjeni i identifikatoru.
 
-`RecommendationQueryService` prvo iz baze učitava najviše `CandidatePoolSize` profesionalaca. Kandidati se početno biraju prema prosječnoj ocjeni, statusu verifikacije i identifikatoru. Za svaki kandidatni profil servis zatim traži ML.NET predikciju za prijavljenog korisnika.
+Kada predikcija nije dostupna, cold-start rang se računa kao:
 
-Personalizovana predikcija postoji samo kada je model treniran i kada su i korisnik i profesionalac poznati modelu. Rezultat se ograničava na raspon od 1 do 5. Ako predikcija nije dostupna, kao `predictedRating` koristi se trenutni `AverageRating` profesionalca.
+`AverageRating * log(CompletedReservations + 1)`
 
-Kandidati se konačno sortiraju prema:
+API vraća profil, kategorije, javnu i predviđenu ocjenu, oznaku `isPersonalized` i tekst `explanation`.
 
-1. `predictedRating` opadajuće
-2. `averageRating` opadajuće
-3. identifikatoru profesionalnog profila rastuće
+## 6. Objašnjivost
 
-API za svakog profesionalca vraća identitet, sliku, grad, opis, satnicu, iskustvo, verifikaciju, prosječnu ocjenu, kategorije, `predictedRating` i `isPersonalized`.
+Za svaki rezultat API bira najkonkretniji dostupni razlog ovim redom:
 
-## 6. Objašnjivost preporuka
+1. klijent je ranije rezervisao tog profesionalca;
+2. klijent je ranije pregledao taj profil;
+3. profesionalac nudi kategoriju za koju klijent ima najjači zbir signala rezervacija i pretraga;
+4. fallback objašnjenje navodi javnu ocjenu i broj završenih poslova.
 
-Trenutna implementacija pruža osnovnu, ali ograničenu objašnjivost:
-
-- `isPersonalized = true` označava da je rang rezultat ML.NET predikcije za poznatog korisnika i poznatog profesionalca.
-- `isPersonalized = false` označava rezervno rangiranje zasnovano na javnoj prosječnoj ocjeni profesionalca.
-- `predictedRating` prikazuje numeričku vrijednost korištenu za rangiranje.
-- `averageRating`, `isVerified`, kategorije, iskustvo i satnica omogućavaju korisniku da procijeni profil nezavisno od ML rezultata.
-
-Model ne vraća doprinose pojedinačnih latentnih faktora niti tekstualno objašnjenje tipa "preporučeno zbog kategorije". Takva tvrdnja ne bi odgovarala trenutnoj implementaciji jer kategorije nisu trening signal.
+Mobilna početna stranica prikazuje `explanation` neposredno uz preporučenog profesionalca. Objašnjenje opisuje evidentiran poslovni signal; ne pokušava tumačiti latentne faktore ML modela.
 
 ## 7. Ograničenja
 
-- **Cold start korisnika:** novi korisnik nema historiju ocjena, pa dobija rezervno rangiranje.
-- **Cold start profesionalca:** profesionalac bez ocjene u trening skupu ne može dobiti personalizovanu predikciju.
-- **Mali skup podataka:** početnih pet seed ocjena dovoljno je za pokretanje modela, ali nije dovoljno za stabilnu personalizaciju u realnom sistemu.
-- **Rijetka matrica:** većina korisnika neće ocijeniti većinu profesionalaca, što smanjuje količinu zajedničkih signala.
-- **Samo eksplicitna ocjena:** model ne koristi pregled profila, pretrage, klikove, rezervacije bez recenzije ili ponovljene angažmane.
-- **Bez konteksta usluge:** kategorija, grad, cijena i termin ne utiču na predikciju.
-- **Periodično osvježavanje:** nova ocjena utiče na model tek nakon sljedećeg treninga ili ponovnog pokretanja API-ja.
-- **Ograničen skup kandidata:** model rangira samo do `CandidatePoolSize` profesionalaca koje inicijalni SQL upit odabere prema općoj reputaciji i verifikaciji.
+- Novi korisnik nema personalizovane interakcije i zato dobija cold-start poredak.
+- Novi profesionalac bez završenih poslova ima slabiji cold-start signal.
+- Pretraga kategorije se povezuje sa svim profesionalcima te kategorije i ne zna koji je rezultat korisnik stvarno namjeravao odabrati.
+- Model se osvježava periodično, pa novi signal utiče na ML predikciju tek nakon sljedećeg treninga ili ponovnog pokretanja API-ja.
+- Matrica je rijetka na malom skupu korisnika i profesionalaca.
 
 ## 8. Relevantna implementacija
 
-- `backend/FixedIT.API/Services/ML/RecommendationService.cs`
-- `backend/FixedIT.API/Services/ML/UserRatingData.cs`
 - `backend/FixedIT.API/BackgroundServices/ModelRetrainingService.cs`
+- `backend/FixedIT.API/Services/ML/RecommendationService.cs`
+- `backend/FixedIT.API/Services/RecommendationActivityService.cs`
 - `backend/FixedIT.API/Services/RecommendationQueryService.cs`
-- `backend/FixedIT.API/Models/UserRating.cs`
-- `backend/FixedIT.API/Configuration/RecommendationOptions.cs`
+- `backend/FixedIT.API/Models/RecommendationActivity.cs`
 - `backend/FixedIT.API/DTOs/Recommendations/RecommendationResponse.cs`
-- `backend/FixedIT.API/Controllers/RecommendationsController.cs`

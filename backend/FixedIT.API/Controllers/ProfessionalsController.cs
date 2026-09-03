@@ -10,7 +10,9 @@ namespace FixedIT.API.Controllers;
 
 [ApiController]
 [Route("api/professionals")]
-public sealed class ProfessionalsController(IProfessionalService professionalService) : ControllerBase
+public sealed class ProfessionalsController(
+    IProfessionalService professionalService,
+    IRecommendationActivityService recommendationActivityService) : ControllerBase
 {
     [AllowAnonymous]
     [HttpGet]
@@ -28,10 +30,19 @@ public sealed class ProfessionalsController(IProfessionalService professionalSer
         [FromQuery] PagedRequest request,
         CancellationToken cancellationToken)
     {
-        return Ok(await professionalService.SearchAsync(
+        var response = await professionalService.SearchAsync(
             filters,
             request,
-            cancellationToken));
+            cancellationToken);
+        if (filters.CategoryId.HasValue && IsAuthenticatedClient())
+        {
+            await recommendationActivityService.RecordCategorySearchAsync(
+                User.GetUserId(),
+                filters.CategoryId.Value,
+                cancellationToken);
+        }
+
+        return Ok(response);
     }
 
     [AllowAnonymous]
@@ -40,7 +51,16 @@ public sealed class ProfessionalsController(IProfessionalService professionalSer
         int id,
         CancellationToken cancellationToken)
     {
-        return Ok(await professionalService.GetByIdAsync(id, cancellationToken));
+        var response = await professionalService.GetByIdAsync(id, cancellationToken);
+        if (IsAuthenticatedClient())
+        {
+            await recommendationActivityService.RecordProfileViewAsync(
+                User.GetUserId(),
+                id,
+                cancellationToken);
+        }
+
+        return Ok(response);
     }
 
     [Authorize(Roles = RoleNames.Professional)]
@@ -105,5 +125,11 @@ public sealed class ProfessionalsController(IProfessionalService professionalSer
             id,
             cancellationToken);
         return NoContent();
+    }
+
+    private bool IsAuthenticatedClient()
+    {
+        return User.Identity?.IsAuthenticated == true
+            && User.IsInRole(RoleNames.Client);
     }
 }

@@ -160,6 +160,7 @@ class Professional {
     this.picture,
     this.predictedRating,
     this.personalized = false,
+    this.explanation,
     this.portfolio = const [],
   });
   final int id;
@@ -176,6 +177,7 @@ class Professional {
   final String? picture;
   final double? predictedRating;
   final bool personalized;
+  final String? explanation;
   final List<PortfolioItem> portfolio;
   factory Professional.fromJson(Json j) => Professional(
     id: jInt(j, 'id'),
@@ -192,6 +194,7 @@ class Professional {
     picture: j['profilePictureUrl']?.toString(),
     predictedRating: (j['predictedRating'] as num?)?.toDouble(),
     personalized: jBool(j, 'isPersonalized'),
+    explanation: j['explanation']?.toString(),
     portfolio: jList(j, 'portfolioItems').map(PortfolioItem.fromJson).toList(),
   );
 }

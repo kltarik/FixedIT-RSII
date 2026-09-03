@@ -50,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? 'Pronađi pravog majstora'
                 : 'Poslovi u vašoj blizini',
             widget.client
-                ? 'Preporuke prilagođene vašim prethodnim ocjenama.'
+                ? 'Preporuke prilagođene vašim rezervacijama i interesima.'
                 : 'Novi oglasi i termini na jednom mjestu.',
           ),
           if (data!.professionals.isNotEmpty) ...[
@@ -62,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 10),
             SizedBox(
-              height: 185,
+              height: widget.client ? 245 : 185,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: data!.professionals.length,
@@ -132,6 +132,15 @@ class _ProfessionalCard extends StatelessWidget {
               const SizedBox(height: 12),
               Text(item.name, style: Theme.of(context).textTheme.titleMedium),
               Text('${item.cityName} • ★ ${item.rating.toStringAsFixed(1)}'),
+              if (item.explanation?.isNotEmpty == true) ...[
+                const SizedBox(height: 8),
+                Text(
+                  item.explanation!,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
               const Spacer(),
               Text(
                 '${money.format(item.hourlyRate)} EUR / h',

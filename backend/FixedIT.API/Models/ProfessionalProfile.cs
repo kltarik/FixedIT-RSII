@@ -18,4 +18,5 @@ public class ProfessionalProfile
     public ICollection<Review> Reviews { get; set; } = [];
     public ICollection<UserRating> UserRatings { get; set; } = [];
     public ICollection<ProfessionalAvailability> Availability { get; set; } = [];
+    public ICollection<RecommendationActivity> RecommendationActivities { get; set; } = [];
 }

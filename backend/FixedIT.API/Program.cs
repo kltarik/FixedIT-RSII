@@ -145,6 +145,7 @@ builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IConversationService, ConversationService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IRecommendationQueryService, RecommendationQueryService>();
+builder.Services.AddScoped<IRecommendationActivityService, RecommendationActivityService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IPdfReportService, PdfReportService>();

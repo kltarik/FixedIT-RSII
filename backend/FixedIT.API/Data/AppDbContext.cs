@@ -32,6 +32,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<UserRating> UserRatings => Set<UserRating>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<RecommendationActivity> RecommendationActivities => Set<RecommendationActivity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -528,6 +529,37 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
                 .WithMany(user => user.RefreshTokens)
                 .HasForeignKey(token => token.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<RecommendationActivity>(entity =>
+        {
+            entity.HasQueryFilter(activity => activity.User.IsActive
+                && (activity.ProfessionalProfile == null
+                    || activity.ProfessionalProfile.User.IsActive));
+            entity.Property(activity => activity.CreatedAt).HasColumnType("datetime2");
+            entity.HasIndex(activity => new { activity.UserId, activity.CreatedAt });
+            entity.HasIndex(activity => new
+            {
+                activity.Type,
+                activity.ProfessionalProfileId,
+                activity.CategoryId
+            });
+            entity.ToTable(table => table.HasCheckConstraint(
+                "CK_RecommendationActivities_Target",
+                "([Type] = 1 AND [ProfessionalProfileId] IS NOT NULL AND [CategoryId] IS NULL) "
+                + "OR ([Type] = 2 AND [ProfessionalProfileId] IS NULL AND [CategoryId] IS NOT NULL)"));
+            entity.HasOne(activity => activity.User)
+                .WithMany(user => user.RecommendationActivities)
+                .HasForeignKey(activity => activity.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(activity => activity.ProfessionalProfile)
+                .WithMany(profile => profile.RecommendationActivities)
+                .HasForeignKey(activity => activity.ProfessionalProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(activity => activity.Category)
+                .WithMany(category => category.RecommendationActivities)
+                .HasForeignKey(activity => activity.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<ReservationStatusHistory>(entity =>

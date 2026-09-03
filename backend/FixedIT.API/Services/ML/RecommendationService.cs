@@ -20,7 +20,7 @@ public sealed class RecommendationService(
     private bool _disposed;
 
     public DateTime? LastTrainedAtUtc { get; private set; }
-    public int TrainingRatingCount { get; private set; }
+    public int TrainingSignalCount { get; private set; }
 
     public bool TrainModel(IReadOnlyCollection<UserRatingData> ratings)
     {
@@ -67,12 +67,12 @@ public sealed class RecommendationService(
             _engine = newEngine;
             _knownUserIds = knownUserIds;
             _knownProfessionalIds = knownProfessionalIds;
-            TrainingRatingCount = ratings.Count;
+            TrainingSignalCount = ratings.Count;
             LastTrainedAtUtc = DateTime.UtcNow;
         }
 
         logger.LogInformation(
-            "Recommendation model trained from {RatingCount} ratings at {TrainedAtUtc}.",
+            "Recommendation model trained from {RatingCount} weighted activity signals at {TrainedAtUtc}.",
             ratings.Count,
             LastTrainedAtUtc);
         return true;

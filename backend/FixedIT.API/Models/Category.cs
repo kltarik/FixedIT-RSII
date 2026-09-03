@@ -10,4 +10,5 @@ public class Category
     public ICollection<ProfessionalCategory> ProfessionalCategories { get; set; } = [];
     public ICollection<JobPosting> JobPostings { get; set; } = [];
     public ICollection<Reservation> Reservations { get; set; } = [];
+    public ICollection<RecommendationActivity> RecommendationActivities { get; set; } = [];
 }

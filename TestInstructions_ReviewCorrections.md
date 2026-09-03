@@ -79,25 +79,7 @@ Za snimak ekrana tokom provjere:
 adb exec-out screencap -p > "$env:USERPROFILE\Desktop\fixedit-test.png"
 ```
 
-## 5. Fizički Android uređaj
-
-1. Uključiti Developer options i USB debugging te spojiti telefon i računar na istu Wi-Fi/LAN mrežu.
-2. Komandom `ipconfig` pronaći IPv4 adresu aktivnog mrežnog adaptera, npr. `192.168.1.10`.
-3. Na telefonu u browseru otvoriti `http://<IP_RAČUNARA>:5000/health`. Mora se prikazati `Healthy`. Ako ne radi, dozvoliti dolazni TCP port 5000 u Windows Firewallu.
-4. Izgraditi APK posebno za tu adresu i instalirati ga:
-
-```powershell
-Set-Location C:\Users\TarikK\Desktop\dev\FixedIT-RSII\mobilne\fixedit_mobile
-$pcIp = "192.168.1.10" # zamijeniti stvarnom adresom
-flutter build apk --release "--dart-define=API_BASE_URL=http://${pcIp}:5000"
-adb devices
-adb install -r .\build\app\outputs\flutter-apk\app-release.apk
-adb shell monkey -p com.example.fixedit_mobile 1
-```
-
-PASS: aplikacija se pokreće, prijava radi i liste se učitavaju preko lokalnog API-ja.
-
-## 6. API pomoćne komande
+## 5. API pomoćne komande
 
 Lozinke unesite iz vlastitog `.env` fajla; nemojte ih zapisivati u ovaj dokument niti u Git.
 
@@ -131,7 +113,7 @@ Invoke-WebRequest "$base/api/admin/users" -Headers $clientHeaders -SkipHttpError
 
 PASS: bez tokena je 401, a klijentski token na admin ruti dobija 403.
 
-## 7. Funkcionalni scenariji po stavkama
+## 6. Funkcionalni scenariji po stavkama
 
 ### 1. Referentni podaci i baza
 
@@ -339,7 +321,7 @@ docker compose start mailhog
 
 PASS: uspješna poruka dobija ACK, privremeni kvar se ponavlja ograničeno, a tek konačni neuspjeh ide u DLQ.
 
-## 8. Regresijski fokus
+## 7. Regresijski fokus
 
 - Provjeriti da admin filteri nikada ne rade samo nad trenutno učitanom stranicom.
 - Provjeriti da deaktivacija i verifikacija nisu zamijenjene i da historijski podaci ostaju vidljivi.
@@ -349,11 +331,11 @@ PASS: uspješna poruka dobija ACK, privremeni kvar se ponavlja ograničeno, a te
 - Provjeriti da gašenje RabbitMQ/SignalR servisa ne može poništiti već commitovanu poslovnu operaciju.
 - Tokom svih scenarija pratiti `docker compose logs fixedit-api`; nijedan očekivani 4xx scenario ne smije proizvesti 500 ili stack trace klijentu.
 
-## 9. Već izvršeno i preostalo
+## 8. Već izvršeno i preostalo
 
 Već izvršeno 03.09.2026: .NET Debug i Release build (0 upozorenja/0 grešaka), oba `flutter analyze`, mobilni testovi 6/6, desktop testovi 5/5, Docker Compose config, Docker image build, Windows Release build i Android Release APK build.
 
-Puni Docker health/E2E nije izvršen jer `.env` nije raspakovan u ovom repozitoriju. PayPal sandbox, SMTP/MailHog, SignalR, retry/DLQ, fizički Android uređaj, vizuelni PDF pregled i ručni UI scenariji ostaju za gore opisanu provjeru korisnika.
+Puni Docker health/E2E nije izvršen jer `.env` nije raspakovan u ovom repozitoriju. PayPal sandbox, SMTP/MailHog, SignalR, retry/DLQ, vizuelni PDF pregled i ručni UI scenariji ostaju za gore opisanu provjeru korisnika.
 
 ## Kriteriji prolaza (PASS/FAIL)
 

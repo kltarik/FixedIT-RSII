@@ -28,10 +28,10 @@ public sealed class ProfessionalSearchRequest : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (!IsOneOf(SortBy, "rating", "price", "name"))
+        if (!IsOneOf(SortBy, "rating", "price", "name", "completed"))
         {
             yield return new ValidationResult(
-                "Kriterij sortiranja mora biti ocjena, cijena ili ime.",
+                "Kriterij sortiranja mora biti ocjena, cijena, ime ili broj završenih poslova.",
                 [nameof(SortBy)]);
         }
 

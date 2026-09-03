@@ -58,7 +58,8 @@ class MobileRepository {
         cityId != null ||
         categoryId != null ||
         minRating != null ||
-        maxRate != null;
+        maxRate != null ||
+        sortBy != 'rating';
     final r = await api.call<Json>(
       () => api.dio.get<Json>(
         searching ? '/api/professionals/search' : '/api/professionals',

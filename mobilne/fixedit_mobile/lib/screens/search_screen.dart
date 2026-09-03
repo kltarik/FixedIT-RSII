@@ -20,6 +20,7 @@ class _SearchScreenState extends State<SearchScreen> {
   int? city;
   int? category;
   double? rating;
+  String sortBy = 'rating';
   @override
   void initState() {
     super.initState();
@@ -60,6 +61,7 @@ class _SearchScreenState extends State<SearchScreen> {
         cityId: city,
         categoryId: category,
         minRating: rating,
+        sortBy: sortBy,
       );
       if (mounted) setState(() => result = value);
     } catch (e) {
@@ -147,12 +149,42 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: search,
-                    icon: const Icon(Icons.tune),
-                    label: const Text('Traži'),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: sortBy,
+                      decoration: const InputDecoration(
+                        labelText: 'Sortiranje',
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'rating',
+                          child: Text('Najbolje ocjene'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'completed',
+                          child: Text('Najviše poslova'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'price',
+                          child: Text('Najviša cijena'),
+                        ),
+                        DropdownMenuItem(value: 'name', child: Text('Ime')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) setState(() => sortBy = value);
+                      },
+                    ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: search,
+                  icon: const Icon(Icons.tune),
+                  label: const Text('Traži'),
+                ),
               ),
             ],
           ),

@@ -4,6 +4,7 @@ using FixedIT.API.Data;
 using FixedIT.API.DTOs.Common;
 using FixedIT.API.DTOs.Professionals;
 using FixedIT.API.Models;
+using FixedIT.API.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
@@ -391,6 +392,16 @@ public sealed class ProfessionalService(
             "name" => query
                 .OrderBy(profile => profile.User.LastName)
                 .ThenBy(profile => profile.User.FirstName)
+                .ThenBy(profile => profile.Id),
+            "completed" when descending => query
+                .OrderByDescending(profile => profile.Reservations.Count(
+                    reservation => reservation.Status == ReservationStatus.Completed))
+                .ThenByDescending(profile => profile.AverageRating)
+                .ThenByDescending(profile => profile.Id),
+            "completed" => query
+                .OrderBy(profile => profile.Reservations.Count(
+                    reservation => reservation.Status == ReservationStatus.Completed))
+                .ThenBy(profile => profile.AverageRating)
                 .ThenBy(profile => profile.Id),
             _ => throw new BusinessException("Odabrani način sortiranja profesionalaca nije podržan.")
         };

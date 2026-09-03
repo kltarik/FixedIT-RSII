@@ -87,6 +87,18 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
     }
   }
 
+  Future<void> _setActive(ProfessionalRecord professional, bool active) async {
+    setState(() => _busyId = professional.id);
+    try {
+      await widget.repository.setUserActive(professional.userId, active);
+      if (mounted) await _load(_page);
+    } catch (exception) {
+      if (mounted) await showApiErrorDialog(context, userError(exception));
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
   Future<void> _edit(ProfessionalRecord professional) async {
     final categories = await widget.repository.getCategories();
     if (!mounted || categories.items.isEmpty) return;
@@ -215,7 +227,8 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
       children: [
         PageHeading(
           title: 'Profesionalci',
-          subtitle: 'Pregled profila i administratorska verifikacija.',
+          subtitle:
+              'Upravljanje profilima, verifikacijom i statusom korisničkog naloga.',
           actions: [
             IconButton.filledTonal(
               onPressed: _load,
@@ -291,6 +304,7 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
                   DataTable(
                     columns: const [
                       DataColumn(label: Text('Verifikovan')),
+                      DataColumn(label: Text('Aktivan')),
                       DataColumn(label: Text('Ime')),
                       DataColumn(label: Text('Grad')),
                       DataColumn(label: Text('Kategorije')),
@@ -317,6 +331,15 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
                                           ? null
                                           : _verify(professional, value),
                                     ),
+                            ),
+                            DataCell(
+                              Switch(
+                                value: professional.isActive,
+                                onChanged: _busyId == professional.id
+                                    ? null
+                                    : (value) =>
+                                          _setActive(professional, value),
+                              ),
                             ),
                             DataCell(Text(professional.name)),
                             DataCell(Text(professional.cityName)),
@@ -385,6 +408,10 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
             Text(professional.bio),
             const SizedBox(height: 16),
             Text('Iskustvo: ${professional.experience} godina'),
+            Text('Nalog: ${professional.isActive ? 'aktivan' : 'deaktiviran'}'),
+            Text(
+              'Verifikacija: ${professional.isVerified ? 'verifikovan' : 'nije verifikovan'}',
+            ),
             Text('Satnica: ${moneyFormat.format(professional.hourlyRate)} EUR'),
             Text(
               'Kategorije: ${professional.categories.map((item) => item.name).join(', ')}',

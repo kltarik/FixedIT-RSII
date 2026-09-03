@@ -28,6 +28,7 @@ public sealed class ProfessionalService(
             profile.HourlyRate,
             profile.YearsOfExperience,
             profile.IsVerified,
+            profile.User.IsActive,
             profile.AverageRating,
             profile.ProfessionalCategories
                 .OrderBy(link => link.Category.Name)
@@ -427,6 +428,7 @@ public sealed class ProfessionalService(
                 profile.HourlyRate,
                 profile.YearsOfExperience,
                 profile.IsVerified,
+                profile.User.IsActive,
                 profile.AverageRating,
                 profile.ProfessionalCategories
                     .OrderBy(link => link.Category.Name)

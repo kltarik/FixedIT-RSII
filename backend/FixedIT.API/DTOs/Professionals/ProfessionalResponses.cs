@@ -21,6 +21,7 @@ public sealed record ProfessionalSummaryResponse(
     decimal HourlyRate,
     int YearsOfExperience,
     bool IsVerified,
+    bool IsActive,
     decimal AverageRating,
     IReadOnlyCollection<CategorySummaryResponse> Categories);
 
@@ -36,6 +37,7 @@ public sealed record ProfessionalDetailResponse(
     decimal HourlyRate,
     int YearsOfExperience,
     bool IsVerified,
+    bool IsActive,
     decimal AverageRating,
     IReadOnlyCollection<CategorySummaryResponse> Categories,
     IReadOnlyCollection<PortfolioItemResponse> PortfolioItems);

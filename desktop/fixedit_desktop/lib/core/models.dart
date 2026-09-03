@@ -318,6 +318,7 @@ class ProfessionalRecord {
     required this.hourlyRate,
     required this.experience,
     required this.isVerified,
+    required this.isActive,
     required this.rating,
     required this.categories,
   });
@@ -330,6 +331,7 @@ class ProfessionalRecord {
   final double hourlyRate;
   final int experience;
   final bool isVerified;
+  final bool isActive;
   final double rating;
   final List<CategoryOption> categories;
   factory ProfessionalRecord.fromJson(Json json) => ProfessionalRecord(
@@ -343,6 +345,7 @@ class ProfessionalRecord {
     hourlyRate: jsonDouble(json, 'hourlyRate'),
     experience: jsonInt(json, 'yearsOfExperience'),
     isVerified: jsonBool(json, 'isVerified'),
+    isActive: jsonBool(json, 'isActive'),
     rating: jsonDouble(json, 'averageRating'),
     categories: jsonList(
       json,

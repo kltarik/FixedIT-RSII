@@ -15,6 +15,11 @@ public interface IAdminUserService
         bool isActive,
         CancellationToken cancellationToken);
 
+    Task<AdminUserResponse> UpdateAsync(
+        string userId,
+        UpdateAdminUserRequest request,
+        CancellationToken cancellationToken);
+
     Task DeleteAsync(
         string adminUserId,
         string userId,

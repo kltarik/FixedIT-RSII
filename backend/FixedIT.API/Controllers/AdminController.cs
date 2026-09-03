@@ -37,6 +37,15 @@ public sealed class AdminController(
             cancellationToken));
     }
 
+    [HttpPut("users/{id}")]
+    public async Task<ActionResult<AdminUserResponse>> UpdateUser(
+        string id,
+        UpdateAdminUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await adminUserService.UpdateAsync(id, request, cancellationToken));
+    }
+
     [HttpDelete("users/{id}")]
     public async Task<IActionResult> DeleteUser(
         string id,
@@ -59,5 +68,14 @@ public sealed class AdminController(
             id,
             request.IsVerified!.Value,
             cancellationToken));
+    }
+
+    [HttpPut("professionals/{id:int}")]
+    public async Task<ActionResult<ProfessionalDetailResponse>> UpdateProfessional(
+        int id,
+        AdminUpdateProfessionalProfileRequest request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await professionalService.AdminUpdateAsync(id, request, cancellationToken));
     }
 }

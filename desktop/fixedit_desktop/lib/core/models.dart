@@ -227,7 +227,9 @@ class AdminUserRecord {
   const AdminUserRecord({
     required this.id,
     required this.email,
-    required this.name,
+    required this.firstName,
+    required this.lastName,
+    this.phoneNumber,
     required this.cityId,
     required this.cityName,
     required this.isActive,
@@ -236,7 +238,10 @@ class AdminUserRecord {
   });
   final String id;
   final String email;
-  final String name;
+  final String firstName;
+  final String lastName;
+  final String? phoneNumber;
+  String get name => '$firstName $lastName'.trim();
   final int cityId;
   final String cityName;
   final bool isActive;
@@ -245,8 +250,9 @@ class AdminUserRecord {
   factory AdminUserRecord.fromJson(Json json) => AdminUserRecord(
     id: jsonString(json, 'id'),
     email: jsonString(json, 'email'),
-    name: '${jsonString(json, 'firstName')} ${jsonString(json, 'lastName')}'
-        .trim(),
+    firstName: jsonString(json, 'firstName'),
+    lastName: jsonString(json, 'lastName'),
+    phoneNumber: json['phoneNumber']?.toString(),
     cityId: jsonInt(json, 'cityId'),
     cityName: jsonString(json, 'cityName'),
     isActive: jsonBool(json, 'isActive'),

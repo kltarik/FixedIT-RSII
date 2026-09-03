@@ -104,6 +104,42 @@ public sealed class AdminUserService(
             roles.ToArray());
     }
 
+    public async Task<AdminUserResponse> UpdateAsync(
+        string userId,
+        UpdateAdminUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        var user = await db.Users
+            .IgnoreQueryFilters()
+            .Include(item => item.City)
+            .SingleOrDefaultAsync(item => item.Id == userId, cancellationToken)
+            ?? throw new NotFoundException("Korisnik nije pronađen.");
+        var city = await db.Cities
+            .SingleOrDefaultAsync(item => item.Id == request.CityId, cancellationToken)
+            ?? throw new NotFoundException("Grad nije pronađen.");
+
+        user.FirstName = request.FirstName.Trim();
+        user.LastName = request.LastName.Trim();
+        user.PhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber)
+            ? null
+            : request.PhoneNumber.Trim();
+        user.CityId = city.Id;
+        user.City = city;
+        EnsureSucceeded(await userManager.UpdateAsync(user));
+        var roles = await userManager.GetRolesAsync(user);
+        return new AdminUserResponse(
+            user.Id,
+            user.Email ?? string.Empty,
+            user.FirstName,
+            user.LastName,
+            user.PhoneNumber,
+            user.CityId,
+            city.Name,
+            user.IsActive,
+            user.CreatedAt,
+            roles.ToArray());
+    }
+
     public async Task DeleteAsync(
         string adminUserId,
         string userId,

@@ -65,6 +65,123 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
     }
   }
 
+  Future<void> _edit(ProfessionalRecord professional) async {
+    final categories = await widget.repository.getCategories();
+    if (!mounted || categories.items.isEmpty) return;
+    final bio = TextEditingController(text: professional.bio);
+    final hourlyRate = TextEditingController(
+      text: professional.hourlyRate.toStringAsFixed(2),
+    );
+    final experience = TextEditingController(
+      text: professional.experience.toString(),
+    );
+    final selected = professional.categories.map((item) => item.id).toSet();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Uredi profil: ${professional.name}'),
+          content: SizedBox(
+            width: 560,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: bio,
+                    minLines: 3,
+                    maxLines: 6,
+                    decoration: const InputDecoration(labelText: 'Opis'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: hourlyRate,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Satnica (EUR)',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: experience,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Godine iskustva',
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Kategorije',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  for (final category in categories.items)
+                    CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      value: selected.contains(category.id),
+                      title: Text(category.name),
+                      onChanged: (checked) => setDialogState(() {
+                        if (checked ?? false) {
+                          selected.add(category.id);
+                        } else {
+                          selected.remove(category.id);
+                        }
+                      }),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Odustani'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final rate = double.tryParse(
+                  hourlyRate.text.replaceAll(',', '.'),
+                );
+                final years = int.tryParse(experience.text);
+                if (rate == null || years == null || selected.isEmpty) {
+                  await showApiErrorDialog(
+                    dialogContext,
+                    'Unesite ispravnu satnicu, iskustvo i najmanje jednu kategoriju.',
+                  );
+                  return;
+                }
+                try {
+                  await widget.repository.updateProfessional(
+                    id: professional.id,
+                    bio: bio.text,
+                    hourlyRate: rate,
+                    yearsOfExperience: years,
+                    categoryIds: selected.toList(),
+                  );
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext, true);
+                  }
+                } catch (error) {
+                  if (dialogContext.mounted) {
+                    await showApiErrorDialog(dialogContext, userError(error));
+                  }
+                }
+              },
+              child: const Text('Sačuvaj'),
+            ),
+          ],
+        ),
+      ),
+    );
+    bio.dispose();
+    hourlyRate.dispose();
+    experience.dispose();
+    if (saved == true && mounted) await _load(_page);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_error != null) return ErrorPanel(message: _error!, onRetry: _load);
@@ -168,7 +285,7 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
                       DataColumn(label: Text('Kategorije')),
                       DataColumn(label: Text('Satnica')),
                       DataColumn(label: Text('Ocjena')),
-                      DataColumn(label: Text('Pregled')),
+                      DataColumn(label: Text('Akcije')),
                     ],
                     rows: [
                       for (final professional in filtered)
@@ -206,9 +323,20 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
                               Text(professional.rating.toStringAsFixed(1)),
                             ),
                             DataCell(
-                              IconButton(
-                                icon: const Icon(Icons.visibility_outlined),
-                                onPressed: () => _showDetails(professional),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Pregled',
+                                    icon: const Icon(Icons.visibility_outlined),
+                                    onPressed: () => _showDetails(professional),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Uredi',
+                                    icon: const Icon(Icons.edit_outlined),
+                                    onPressed: () => _edit(professional),
+                                  ),
+                                ],
                               ),
                             ),
                           ],

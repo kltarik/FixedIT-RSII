@@ -105,6 +105,91 @@ class _UsersScreenState extends State<UsersScreen> {
     }
   }
 
+  Future<void> _edit(AdminUserRecord user) async {
+    final cities = await widget.repository.getCities();
+    if (!mounted || cities.items.isEmpty) return;
+    final firstName = TextEditingController(text: user.firstName);
+    final lastName = TextEditingController(text: user.lastName);
+    final phone = TextEditingController(text: user.phoneNumber);
+    var cityId = user.cityId;
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Uredi korisnika'),
+          content: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: firstName,
+                  decoration: const InputDecoration(labelText: 'Ime'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: lastName,
+                  decoration: const InputDecoration(labelText: 'Prezime'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: phone,
+                  decoration: const InputDecoration(labelText: 'Telefon'),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  initialValue: cityId,
+                  decoration: const InputDecoration(labelText: 'Grad'),
+                  items: cities.items
+                      .map(
+                        (city) => DropdownMenuItem(
+                          value: city.id,
+                          child: Text(city.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setDialogState(() => cityId = value ?? cityId),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Odustani'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                try {
+                  await widget.repository.updateUser(
+                    id: user.id,
+                    firstName: firstName.text,
+                    lastName: lastName.text,
+                    phoneNumber: phone.text,
+                    cityId: cityId,
+                  );
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext, true);
+                  }
+                } catch (error) {
+                  if (dialogContext.mounted) {
+                    await showApiErrorDialog(dialogContext, userError(error));
+                  }
+                }
+              },
+              child: const Text('Sačuvaj'),
+            ),
+          ],
+        ),
+      ),
+    );
+    firstName.dispose();
+    lastName.dispose();
+    phone.dispose();
+    if (saved == true && mounted) await _load(_page);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_error != null) return ErrorPanel(message: _error!, onRetry: _load);
@@ -166,12 +251,24 @@ class _UsersScreenState extends State<UsersScreen> {
                             DataCell(Text(user.cityName)),
                             DataCell(Text(user.roles.map(roleName).join(', '))),
                             DataCell(
-                              IconButton(
-                                tooltip: 'Izbriši',
-                                onPressed: _busyId == null
-                                    ? () => _delete(user)
-                                    : null,
-                                icon: const Icon(Icons.delete_outline),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Uredi',
+                                    onPressed: _busyId == null
+                                        ? () => _edit(user)
+                                        : null,
+                                    icon: const Icon(Icons.edit_outlined),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Izbriši',
+                                    onPressed: _busyId == null
+                                        ? () => _delete(user)
+                                        : null,
+                                    icon: const Icon(Icons.delete_outline),
+                                  ),
+                                ],
                               ),
                             ),
                           ],

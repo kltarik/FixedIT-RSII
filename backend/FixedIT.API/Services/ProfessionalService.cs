@@ -137,6 +137,24 @@ public sealed class ProfessionalService(
         return await GetByIdAsync(profile.Id, cancellationToken);
     }
 
+    public async Task<ProfessionalDetailResponse> AdminUpdateAsync(
+        int id,
+        AdminUpdateProfessionalProfileRequest request,
+        CancellationToken cancellationToken)
+    {
+        var profile = await db.ProfessionalProfiles
+            .SingleOrDefaultAsync(item => item.Id == id, cancellationToken)
+            ?? throw new NotFoundException("Profil profesionalca nije pronađen.");
+        await UpdateProfileValuesAsync(
+            profile,
+            request.Bio,
+            request.HourlyRate,
+            request.YearsOfExperience,
+            request.CategoryIds,
+            cancellationToken);
+        return await GetByIdAsync(profile.Id, cancellationToken);
+    }
+
     public Task<ProfessionalDetailResponse> GetMyProfileAsync(
         string userId,
         CancellationToken cancellationToken)
@@ -155,7 +173,26 @@ public sealed class ProfessionalService(
         var profile = await db.ProfessionalProfiles
             .SingleOrDefaultAsync(item => item.UserId == userId, cancellationToken)
             ?? throw new NotFoundException("Profil profesionalca nije pronađen.");
-        var categoryIds = request.CategoryIds.Distinct().ToArray();
+        await UpdateProfileValuesAsync(
+            profile,
+            request.Bio,
+            request.HourlyRate,
+            request.YearsOfExperience,
+            request.CategoryIds,
+            cancellationToken);
+
+        return await GetByIdAsync(profile.Id, cancellationToken);
+    }
+
+    private async Task UpdateProfileValuesAsync(
+        ProfessionalProfile profile,
+        string bio,
+        decimal hourlyRate,
+        int yearsOfExperience,
+        int[] requestedCategoryIds,
+        CancellationToken cancellationToken)
+    {
+        var categoryIds = requestedCategoryIds.Distinct().ToArray();
         if (categoryIds.Any(id => id <= 0))
         {
             throw new BusinessException("Identifikatori kategorija moraju biti pozitivni brojevi.");
@@ -178,12 +215,10 @@ public sealed class ProfessionalService(
             CategoryId = categoryId
         }));
 
-        profile.Bio = request.Bio.Trim();
-        profile.HourlyRate = request.HourlyRate;
-        profile.YearsOfExperience = request.YearsOfExperience;
+        profile.Bio = bio.Trim();
+        profile.HourlyRate = hourlyRate;
+        profile.YearsOfExperience = yearsOfExperience;
         await db.SaveChangesAsync(cancellationToken);
-
-        return await GetByIdAsync(profile.Id, cancellationToken);
     }
 
     public async Task<PortfolioItemResponse> AddPortfolioItemAsync(

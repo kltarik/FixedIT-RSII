@@ -18,3 +18,19 @@ public sealed class UpdateProfessionalProfileRequest
     [MinLength(1)]
     public int[] CategoryIds { get; set; } = [];
 }
+
+public sealed class AdminUpdateProfessionalProfileRequest
+{
+    [Required]
+    [MaxLength(DatabaseConstants.DescriptionMaxLength)]
+    public string Bio { get; set; } = string.Empty;
+
+    [Range(0, 1_000_000)]
+    public decimal HourlyRate { get; set; }
+
+    [Range(0, 100)]
+    public int YearsOfExperience { get; set; }
+
+    [MinLength(1)]
+    public int[] CategoryIds { get; set; } = [];
+}

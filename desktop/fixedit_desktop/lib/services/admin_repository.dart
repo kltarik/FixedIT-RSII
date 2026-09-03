@@ -216,6 +216,27 @@ class AdminRepository {
     return AdminUserRecord.fromJson(response.data ?? const {});
   }
 
+  Future<AdminUserRecord> updateUser({
+    required String id,
+    required String firstName,
+    required String lastName,
+    String? phoneNumber,
+    required int cityId,
+  }) async {
+    final response = await api.request<Json>(
+      () => api.dio.put<Json>(
+        '/api/admin/users/$id',
+        data: {
+          'firstName': firstName,
+          'lastName': lastName,
+          'phoneNumber': phoneNumber?.isEmpty ?? true ? null : phoneNumber,
+          'cityId': cityId,
+        },
+      ),
+    );
+    return AdminUserRecord.fromJson(response.data ?? const {});
+  }
+
   Future<void> deleteUser(String id) async {
     await api.request<void>(() => api.dio.delete<void>('/api/admin/users/$id'));
   }
@@ -243,6 +264,27 @@ class AdminRepository {
       () => api.dio.put<Json>(
         '/api/admin/professionals/$id/verification',
         data: {'isVerified': isVerified},
+      ),
+    );
+    return ProfessionalRecord.fromJson(response.data ?? const {});
+  }
+
+  Future<ProfessionalRecord> updateProfessional({
+    required int id,
+    required String bio,
+    required double hourlyRate,
+    required int yearsOfExperience,
+    required List<int> categoryIds,
+  }) async {
+    final response = await api.request<Json>(
+      () => api.dio.put<Json>(
+        '/api/admin/professionals/$id',
+        data: {
+          'bio': bio,
+          'hourlyRate': hourlyRate,
+          'yearsOfExperience': yearsOfExperience,
+          'categoryIds': categoryIds,
+        },
       ),
     );
     return ProfessionalRecord.fromJson(response.data ?? const {});

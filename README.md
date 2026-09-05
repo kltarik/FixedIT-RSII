@@ -73,13 +73,13 @@ Sljedeći nalozi automatski se kreiraju pri prvom pokretanju sistema:
 
 | Uloga | Email | Lozinka | Aplikacija |
 |---|---|---|---|
-| Administrator | `admin@fixedit.local` | `Admin_FixedIT_2026!` | Desktop |
-| Klijent | `client1@fixedit.local` | `User_FixedIT_2026!` | Mobilna |
-| Klijent | `client2@fixedit.local` | `User_FixedIT_2026!` | Mobilna |
-| Klijent | `client3@fixedit.local` | `User_FixedIT_2026!` | Mobilna |
-| Profesionalac | `professional1@fixedit.local` | `User_FixedIT_2026!` | Mobilna |
-| Profesionalac | `professional2@fixedit.local` | `User_FixedIT_2026!` | Mobilna |
-| Profesionalac | `professional3@fixedit.local` | `User_FixedIT_2026!` | Mobilna |
+| Administrator | `admin@fixedit.local` | `Admin@FixedIT2026!` | Desktop |
+| Klijent | `client1@fixedit.local` | `User@FixedIT2026!` | Mobilna |
+| Klijent | `client2@fixedit.local` | `User@FixedIT2026!` | Mobilna |
+| Klijent | `client3@fixedit.local` | `User@FixedIT2026!` | Mobilna |
+| Profesionalac | `professional1@fixedit.local` | `User@FixedIT2026!` | Mobilna |
+| Profesionalac | `professional2@fixedit.local` | `User@FixedIT2026!` | Mobilna |
+| Profesionalac | `professional3@fixedit.local` | `User@FixedIT2026!` | Mobilna |
 
 Lozinke odgovaraju vrijednostima `SEED_ADMIN_PASSWORD` i `SEED_USER_PASSWORD` iz `.env` fajla.
 

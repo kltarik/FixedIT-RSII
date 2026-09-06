@@ -2,6 +2,7 @@ using FixedIT.API.Constants;
 using FixedIT.API.DTOs.Common;
 using FixedIT.API.DTOs.Reservations;
 using FixedIT.API.Extensions;
+using FixedIT.API.Filters;
 using FixedIT.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,6 +26,7 @@ public sealed class AdminReservationsController(
     }
 
     [HttpPut("{id:int}/status")]
+    [SkipAutomaticAudit]
     public async Task<ActionResult<ReservationResponse>> SetStatus(
         int id,
         AdminReservationStatusRequest request,

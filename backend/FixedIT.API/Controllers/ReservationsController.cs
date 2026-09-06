@@ -2,6 +2,7 @@ using FixedIT.API.Constants;
 using FixedIT.API.DTOs.Common;
 using FixedIT.API.DTOs.Reservations;
 using FixedIT.API.Extensions;
+using FixedIT.API.Filters;
 using FixedIT.API.Models.Enums;
 using FixedIT.API.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -17,6 +18,7 @@ public sealed class ReservationsController(
 {
     [Authorize(Roles = RoleNames.Client)]
     [HttpPost]
+    [SkipAutomaticAudit]
     public async Task<ActionResult<ReservationResponse>> Create(
         CreateReservationRequest request,
         CancellationToken cancellationToken)
@@ -89,6 +91,7 @@ public sealed class ReservationsController(
 
     [Authorize(Roles = RoleNames.Professional)]
     [HttpPut("{id:int}/accept")]
+    [SkipAutomaticAudit]
     public Task<ActionResult<ReservationResponse>> Accept(
         int id,
         CancellationToken cancellationToken)
@@ -98,6 +101,7 @@ public sealed class ReservationsController(
 
     [Authorize(Roles = RoleNames.Professional)]
     [HttpPut("{id:int}/start")]
+    [SkipAutomaticAudit]
     public Task<ActionResult<ReservationResponse>> Start(
         int id,
         CancellationToken cancellationToken)
@@ -107,6 +111,7 @@ public sealed class ReservationsController(
 
     [Authorize(Roles = RoleNames.Professional)]
     [HttpPut("{id:int}/complete")]
+    [SkipAutomaticAudit]
     public Task<ActionResult<ReservationResponse>> Complete(
         int id,
         CancellationToken cancellationToken)
@@ -116,6 +121,7 @@ public sealed class ReservationsController(
 
     [Authorize]
     [HttpPut("{id:int}/cancel")]
+    [SkipAutomaticAudit]
     public Task<ActionResult<ReservationResponse>> Cancel(
         int id,
         CancelReservationRequest request,

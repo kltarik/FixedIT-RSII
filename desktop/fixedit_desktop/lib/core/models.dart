@@ -466,6 +466,8 @@ String auditActionName(String action) => switch (action) {
   'POST' => 'Kreiranje',
   'PUT' => 'Izmjena',
   'DELETE' => 'Brisanje',
+  'Created' => 'Kreiranje',
+  'Deleted' => 'Brisanje',
   'StatusTransition' => 'Promjena statusa',
   _ => action,
 };
@@ -481,6 +483,7 @@ String auditEntityName(String entity) => switch (entity) {
   'Professionals' => 'Profesionalci',
   'Reservations' || 'Reservation' => 'Rezervacije',
   'Reviews' => 'Recenzije',
+  'Review' => 'Recenzija',
   'Users' => 'Korisnici',
   'Unknown' || 'Nepoznato' => 'Nepoznato',
   _ => entity,

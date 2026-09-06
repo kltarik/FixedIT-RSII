@@ -182,11 +182,14 @@ class _AuditLogsScreenState extends State<AuditLogsScreen> {
                           ),
                           DataCell(Text(entry.ipAddress)),
                           DataCell(
-                            SizedBox(
-                              width: 220,
-                              child: Text(
-                                auditDetailsText(entry.details),
-                                overflow: TextOverflow.ellipsis,
+                            Tooltip(
+                              message: auditDetailsText(entry.details),
+                              child: SizedBox(
+                                width: 220,
+                                child: Text(
+                                  auditDetailsText(entry.details),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ),
                           ),

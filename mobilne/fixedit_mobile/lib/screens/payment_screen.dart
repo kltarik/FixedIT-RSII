@@ -3,6 +3,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
 
 import '../core/models.dart';
+import '../core/payment_redirect.dart';
 import '../services/mobile_repository.dart';
 import '../widgets/common.dart';
 
@@ -47,7 +48,26 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   bool _isRedirect(WebUri? url, String segment) {
     if (url == null) return false;
-    return url.path.toLowerCase().endsWith('/payments/$segment');
+    return isPayPalRedirectPath(url.path, segment);
+  }
+
+  Future<bool> _processRedirect(
+    InAppWebViewController controller,
+    WebUri? url,
+  ) async {
+    if (_isRedirect(url, 'cancelled')) {
+      await controller.stopLoading();
+      if (mounted) Navigator.pop(context, false);
+      return true;
+    }
+
+    if (_isRedirect(url, 'success')) {
+      await controller.stopLoading();
+      await capture(url);
+      return true;
+    }
+
+    return false;
   }
 
   Future<NavigationActionPolicy> _handleNavigation(
@@ -55,15 +75,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     NavigationAction action,
   ) async {
     final url = action.request.url;
-    if (_isRedirect(url, 'cancelled')) {
-      await controller.stopLoading();
-      if (mounted) Navigator.pop(context, false);
-      return NavigationActionPolicy.CANCEL;
-    }
-
-    if (_isRedirect(url, 'success')) {
-      await controller.stopLoading();
-      await capture(url);
+    if (await _processRedirect(controller, url)) {
       return NavigationActionPolicy.CANCEL;
     }
 
@@ -139,6 +151,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       javaScriptEnabled: true,
                     ),
                     shouldOverrideUrlLoading: _handleNavigation,
+                    onLoadStart: (controller, url) async {
+                      await _processRedirect(controller, url);
+                    },
+                    onUpdateVisitedHistory: (controller, url, _) async {
+                      await _processRedirect(controller, url);
+                    },
                     onReceivedError: (_, request, webError) {
                       if (request.isForMainFrame == true && mounted) {
                         setState(() {

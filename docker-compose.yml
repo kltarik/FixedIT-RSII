@@ -6,6 +6,12 @@ services:
       ACCEPT_EULA: "Y"
     ports: ["1433:1433"]
     volumes: ["sqldata:/var/opt/mssql"]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$$SA_PASSWORD\" -Q \"SELECT 1\" -b -o /dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   rabbitmq:
     image: rabbitmq:3.13.1-management
@@ -13,6 +19,12 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER}"
       RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASS}"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
   fixedit-api:
     build:
@@ -48,8 +60,13 @@ services:
       Smtp__Port: "587"
       Smtp__Username: "${SMTP_USERNAME}"
       Smtp__Password: "${SMTP_PASSWORD}"
-      Smtp__UseSsl: "true"
-    depends_on: [sqlserver, rabbitmq]
+      Smtp__UseSsl: "${SMTP_USE_SSL:-false}"
+    restart: on-failure
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   fixedit-notifications:
     build:
@@ -71,11 +88,21 @@ services:
       Smtp__UseSsl: "${SMTP_USE_SSL:-false}"
       Smtp__FromAddress: "${SMTP_FROM_ADDRESS:-noreply@fixedit.local}"
       Smtp__FromName: "${SMTP_FROM_NAME:-FixedIT}"
-    depends_on: [rabbitmq, mailhog]
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mailhog:
+        condition: service_healthy
 
   mailhog:
     image: mailhog/mailhog:v1.0.1
     ports: ["1025:1025", "8025:8025"]
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
 volumes:
   sqldata:

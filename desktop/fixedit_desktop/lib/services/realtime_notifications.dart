@@ -70,7 +70,7 @@ class RealtimeNotifications extends ChangeNotifier {
         }
       });
       _connection = connection;
-      await connection.start();
+      await _startConnection(connection);
       _status = RealtimeStatus.connected;
     } catch (exception) {
       final failedConnection = _connection;
@@ -86,6 +86,28 @@ class RealtimeNotifications extends ChangeNotifier {
       _loading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _startConnection(HubConnection connection) async {
+    Object? lastError;
+    for (final delay in const [
+      Duration.zero,
+      Duration(seconds: 2),
+      Duration(seconds: 5),
+    ]) {
+      if (delay != Duration.zero) {
+        await Future<void>.delayed(delay);
+      }
+      try {
+        await connection.start();
+        return;
+      } catch (exception) {
+        lastError = exception;
+        debugPrint('SignalR pokušaj povezivanja nije uspio: $exception');
+      }
+    }
+
+    throw StateError('SignalR povezivanje nije uspjelo: $lastError');
   }
 
   Future<void> retry() async {

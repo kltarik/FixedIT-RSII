@@ -12,6 +12,7 @@ class RealtimeNotifications extends ChangeNotifier {
   final String? Function() tokenProvider;
   final _local = FlutterLocalNotificationsPlugin();
   HubConnection? _connection;
+  bool _localNotificationsReady = false;
   List<NotificationItem> items = const [];
   bool loading = false;
   bool connected = false;
@@ -23,16 +24,7 @@ class RealtimeNotifications extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      await _local.initialize(
-        const InitializationSettings(
-          android: AndroidInitializationSettings('ic_notification'),
-        ),
-      );
-      await _local
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.requestNotificationsPermission();
+      await _initializeLocalNotifications();
       items = (await repository.getNotifications()).items;
       ApiClient.ensureConfigured();
       final connection = HubConnectionBuilder()
@@ -66,9 +58,10 @@ class RealtimeNotifications extends ChangeNotifier {
         notifyListeners();
       });
       _connection = connection;
-      await connection.start();
+      await _startConnection(connection);
       connected = true;
     } catch (e) {
+      debugPrint('SignalR povezivanje za obavijesti nije uspjelo: $e');
       error = userFacingError(
         e,
         fallback: 'Povezivanje s obavijestima nije uspjelo.',
@@ -80,6 +73,47 @@ class RealtimeNotifications extends ChangeNotifier {
     }
   }
 
+  Future<void> _initializeLocalNotifications() async {
+    try {
+      await _local.initialize(
+        const InitializationSettings(
+          android: AndroidInitializationSettings('ic_notification'),
+        ),
+      );
+      await _local
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.requestNotificationsPermission();
+      _localNotificationsReady = true;
+    } catch (exception) {
+      _localNotificationsReady = false;
+      debugPrint('Lokalne Android obavijesti nisu dostupne: $exception');
+    }
+  }
+
+  Future<void> _startConnection(HubConnection connection) async {
+    Object? lastError;
+    for (final delay in const [
+      Duration.zero,
+      Duration(seconds: 2),
+      Duration(seconds: 5),
+    ]) {
+      if (delay != Duration.zero) {
+        await Future<void>.delayed(delay);
+      }
+      try {
+        await connection.start();
+        return;
+      } catch (exception) {
+        lastError = exception;
+        debugPrint('SignalR pokušaj povezivanja nije uspio: $exception');
+      }
+    }
+
+    throw StateError('SignalR povezivanje nije uspjelo: $lastError');
+  }
+
   Future<void> _receive(List<Object?>? args) async {
     if (args == null || args.isEmpty || args.first is! Map) return;
     final item = NotificationItem.fromJson(
@@ -87,20 +121,26 @@ class RealtimeNotifications extends ChangeNotifier {
     );
     items = [item, ...items.where((e) => e.id != item.id)];
     notifyListeners();
-    await _local.show(
-      item.id,
-      item.title,
-      item.body,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'fixedit_updates',
-          'FixedIT obavijesti',
-          channelDescription: 'Rezervacije, poruke i plaćanja',
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-      ),
-    );
+    if (_localNotificationsReady) {
+      try {
+        await _local.show(
+          item.id,
+          item.title,
+          item.body,
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'fixedit_updates',
+              'FixedIT obavijesti',
+              channelDescription: 'Rezervacije, poruke i plaćanja',
+              importance: Importance.high,
+              priority: Priority.high,
+            ),
+          ),
+        );
+      } catch (exception) {
+        debugPrint('Lokalna obavijest nije prikazana: $exception');
+      }
+    }
   }
 
   Future<void> markRead(NotificationItem item) async {
@@ -151,6 +191,7 @@ class RealtimeNotifications extends ChangeNotifier {
     await c?.stop();
     connected = false;
     items = const [];
+    _localNotificationsReady = false;
     notifyListeners();
   }
 

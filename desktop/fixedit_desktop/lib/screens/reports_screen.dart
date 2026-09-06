@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../app/theme.dart';
 import '../core/models.dart';
 import '../services/admin_repository.dart';
+import '../services/pdf_file_service.dart';
 import '../widgets/common.dart';
 
 class ReportsScreen extends StatefulWidget {
@@ -95,14 +96,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
         fileName: reportName,
         type: FileType.custom,
         allowedExtensions: const ['pdf'],
-        bytes: bytes,
         lockParentWindow: true,
       );
-      if (mounted && path != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('PDF je sačuvan: $path')));
-      }
+      if (path == null) return;
+      final savedPath = await savePdfFile(path, bytes);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('PDF je sačuvan: $savedPath')));
     } catch (exception) {
       if (mounted) {
         await showApiErrorDialog(

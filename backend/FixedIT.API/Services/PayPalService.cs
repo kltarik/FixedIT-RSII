@@ -307,12 +307,17 @@ internal sealed class PayPalService(
             var debugId = response.Headers.TryGetValues("PayPal-Debug-Id", out var values)
                 ? values.FirstOrDefault()
                 : null;
+            var providerError = ParseProviderError(rawBody);
             logger.LogWarning(
-                "PayPal {Operation} failed with status {StatusCode} and debug ID {DebugId}.",
+                "PayPal {Operation} failed with status {StatusCode}, error {ErrorName}, issues {Issues}, and debug ID {DebugId}.",
                 operation,
                 (int)response.StatusCode,
+                providerError.Name ?? "unavailable",
+                providerError.Issues.Count == 0
+                    ? "unavailable"
+                    : string.Join(", ", providerError.Issues),
                 debugId ?? "unavailable");
-            throw new BusinessException("Pružalac usluge plaćanja nije mogao završiti zahtjev.");
+            throw new BusinessException(MapProviderError(providerError.Issues));
         }
 
         try
@@ -324,6 +329,57 @@ internal sealed class PayPalService(
             logger.LogError(exception, "PayPal {Operation} returned invalid JSON.", operation);
             throw new BusinessException("Pružalac usluge plaćanja vratio je neispravan odgovor.");
         }
+    }
+
+    private static ProviderError ParseProviderError(string rawBody)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(rawBody);
+            var root = document.RootElement;
+            var name = root.TryGetProperty("name", out var nameProperty)
+                ? nameProperty.GetString()
+                : null;
+            var issues = new List<string>();
+            if (root.TryGetProperty("details", out var details)
+                && details.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var detail in details.EnumerateArray())
+                {
+                    if (detail.TryGetProperty("issue", out var issue)
+                        && !string.IsNullOrWhiteSpace(issue.GetString()))
+                    {
+                        issues.Add(issue.GetString()!);
+                    }
+                }
+            }
+
+            return new ProviderError(name, issues);
+        }
+        catch (JsonException)
+        {
+            return new ProviderError(null, []);
+        }
+    }
+
+    private static string MapProviderError(IReadOnlyCollection<string> issues)
+    {
+        if (issues.Contains("ORDER_NOT_APPROVED", StringComparer.Ordinal))
+        {
+            return "PayPal plaćanje još nije odobreno.";
+        }
+
+        if (issues.Contains("COMPLIANCE_VIOLATION", StringComparer.Ordinal))
+        {
+            return "PayPal je odbio transakciju zbog ograničenja naloga. U sandboxu koristite odvojene Business i Personal testne naloge.";
+        }
+
+        if (issues.Contains("INSTRUMENT_DECLINED", StringComparer.Ordinal))
+        {
+            return "PayPal je odbio odabrani izvor plaćanja. Odaberite drugi izvor i pokušajte ponovo.";
+        }
+
+        return "Pružalac usluge plaćanja nije mogao završiti zahtjev.";
     }
 
     private static PayPalOrderResult ParseOrder(JsonElement root)
@@ -433,4 +489,6 @@ internal sealed class PayPalService(
         [JsonPropertyName("expires_in")]
         public int ExpiresIn { get; set; }
     }
+
+    private sealed record ProviderError(string? Name, IReadOnlyCollection<string> Issues);
 }

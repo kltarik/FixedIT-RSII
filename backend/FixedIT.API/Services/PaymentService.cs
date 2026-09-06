@@ -76,7 +76,7 @@ internal sealed class PaymentService(
             reservation.Id,
             reservation.TotalPrice,
             _options.Currency,
-            BuildRequestId("order", reservation.Id),
+            BuildRequestId("order", Guid.NewGuid().ToString("N")),
             cancellationToken);
         if (string.IsNullOrWhiteSpace(order.ApprovalUrl))
         {
@@ -142,7 +142,7 @@ internal sealed class PaymentService(
 
         var capture = await payPalService.CaptureOrderAsync(
             payment.PayPalOrderId,
-            BuildRequestId("capture", payment.Id),
+            BuildRequestId("capture", payment.PayPalOrderId),
             cancellationToken);
         ValidateCapture(payment, capture);
         var completion = CompletePayment(
@@ -269,7 +269,7 @@ internal sealed class PaymentService(
             payment.PayPalCaptureId,
             payment.Amount,
             payment.Currency,
-            BuildRequestId("refund", payment.Id),
+            BuildRequestId("refund", payment.PayPalCaptureId),
             cancellationToken);
         if (!string.Equals(refund.Status, CompletedStatus, StringComparison.Ordinal)
             || refund.Amount != payment.Amount
@@ -523,9 +523,9 @@ internal sealed class PaymentService(
             payment.RefundedAt);
     }
 
-    private static string BuildRequestId(string operation, int entityId)
+    private static string BuildRequestId(string operation, string externalId)
     {
-        return $"fixedit-{operation}-{entityId}";
+        return $"fixedit-{operation}-{externalId}";
     }
 
     private sealed record PaymentCompletion(Payment Payment, Notification Notification);

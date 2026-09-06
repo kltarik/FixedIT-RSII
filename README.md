@@ -47,6 +47,10 @@ Invoke-RestMethod http://localhost:5000/health
 # Očekivani odgovor: Healthy
 ```
 
+MailHog razvojni inbox dostupan je na `http://localhost:8025`. Kod koji se
+pošalje nakon izbora **Zaboravili ste lozinku?** nalazi se u posljednjoj poruci
+za unesenu email adresu.
+
 ### 3. Windows Desktop aplikacija
 
 Pokrenuti:
@@ -66,6 +70,17 @@ adb install -r mobilne\fixedit_mobile\build\app\outputs\flutter-apk\app-release.
 ```
 
 API adresa je `http://10.0.2.2:5000`, standardna AVD adresa za host računar, i ugrađena je u release build.
+
+### 5. PayPal sandbox plaćanje
+
+Za kompletan test plaćanja mora se koristiti **Personal** PayPal sandbox nalog
+koji nije isti nalog kao **Business** sandbox merchant povezan s vrijednostima
+`PAYPAL_CLIENT_ID` i `PAYPAL_CLIENT_SECRET`. Korištenje merchant naloga kao
+kupca PayPal odbija porukom `COMPLIANCE_VIOLATION`.
+
+Nakon što klijent odobri plaćanje u ugrađenom PayPal prozoru, aplikacija
+automatski presreće povratni URL i poziva serversku potvrdu naplate. Uspješan
+capture ažurira status plaćanja, zaradu profesionalca i završne izvještaje.
 
 ## Testni nalozi
 

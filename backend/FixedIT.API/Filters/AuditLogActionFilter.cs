@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using FixedIT.API.CustomExceptions;
 using FixedIT.API.Data;
 using FixedIT.API.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -68,7 +69,9 @@ public sealed class AuditLogActionFilter(
     private static bool ShouldAudit(ActionExecutedContext context)
     {
         return AuditedMethods.Contains(context.HttpContext.Request.Method)
-            && context.HttpContext.User.Identity?.IsAuthenticated == true;
+            && context.HttpContext.User.Identity?.IsAuthenticated == true
+            && context.ActionDescriptor.EndpointMetadata
+                .All(metadata => metadata is not SkipAutomaticAuditAttribute);
     }
 
     private static int ResolveStatusCode(ActionExecutedContext context)
@@ -81,7 +84,13 @@ public sealed class AuditLogActionFilter(
 
         if (context.Exception is not null)
         {
-            return StatusCodes.Status500InternalServerError;
+            return context.Exception switch
+            {
+                BusinessException business => business.StatusCode,
+                NotFoundException notFound => notFound.StatusCode,
+                UnauthorizedException unauthorized => unauthorized.StatusCode,
+                _ => StatusCodes.Status500InternalServerError
+            };
         }
 
         if (context.HttpContext.RequestAborted.IsCancellationRequested)

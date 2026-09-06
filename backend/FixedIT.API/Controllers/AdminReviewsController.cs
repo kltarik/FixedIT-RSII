@@ -2,6 +2,7 @@ using FixedIT.API.Constants;
 using FixedIT.API.DTOs.Common;
 using FixedIT.API.DTOs.Reviews;
 using FixedIT.API.Extensions;
+using FixedIT.API.Filters;
 using FixedIT.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,6 +24,7 @@ public sealed class AdminReviewsController(IReviewService reviewService) : Contr
     }
 
     [HttpDelete("{id:int}")]
+    [SkipAutomaticAudit]
     public async Task<IActionResult> Delete(
         int id,
         [FromBody] DeleteReviewRequest request,

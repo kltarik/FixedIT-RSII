@@ -12,6 +12,7 @@ public sealed class EmailService(
     IOptions<SmtpOptions> options,
     ILogger<EmailService> logger) : IEmailService
 {
+    private static readonly TimeZoneInfo BosniaTimeZone = ResolveBosniaTimeZone();
     private readonly SmtpOptions _options = options.Value;
 
     public async Task SendAsync(
@@ -70,10 +71,43 @@ public sealed class EmailService(
                 $"Plaćanje u iznosu od {payment.Amount.ToString("0.00", CultureInfo.InvariantCulture)} {payment.Currency} uspješno je završeno."),
             PasswordResetRequestedMessage passwordReset => (
                 "Kod za promjenu FixedIT lozinke",
-                $"Vaš jednokratni kod je: {passwordReset.Code}{Environment.NewLine}{Environment.NewLine}Kod vrijedi do {passwordReset.ExpiresAt:dd.MM.yyyy HH:mm} UTC."),
+                $"Vaš jednokratni kod je: {passwordReset.Code}{Environment.NewLine}{Environment.NewLine}Kod vrijedi do {FormatBosniaTime(passwordReset.ExpiresAt)} po vremenu u BiH."),
             _ => throw new InvalidOperationException(
                 $"Tip poruke obavijesti {notification.GetType().Name} nije podržan.")
         };
+    }
+
+    private static string FormatBosniaTime(DateTime value)
+    {
+        var utcValue = value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
+        return TimeZoneInfo.ConvertTimeFromUtc(utcValue, BosniaTimeZone)
+            .ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
+    }
+
+    private static TimeZoneInfo ResolveBosniaTimeZone()
+    {
+        foreach (var timeZoneId in new[]
+                 {
+                     "Europe/Sarajevo",
+                     "Central European Standard Time"
+                 })
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                // Try the platform-specific identifier below.
+            }
+        }
+
+        throw new InvalidOperationException("Vremenska zona za Bosnu i Hercegovinu nije dostupna.");
     }
 
     private static string BuildReservationBody(ReservationStatusChangedMessage message)

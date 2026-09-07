@@ -152,6 +152,9 @@ class _AuditLogsScreenState extends State<AuditLogsScreen> {
               padding: const EdgeInsets.all(16),
               child: scrollableTable(
                 DataTable(
+                  dataRowMinHeight: 56,
+                  dataRowMaxHeight: double.infinity,
+                  columnSpacing: 28,
                   columns: const [
                     DataColumn(label: Text('Vrijeme')),
                     DataColumn(label: Text('Akcija')),
@@ -182,13 +185,14 @@ class _AuditLogsScreenState extends State<AuditLogsScreen> {
                           ),
                           DataCell(Text(entry.ipAddress)),
                           DataCell(
-                            Tooltip(
-                              message: auditDetailsText(entry.details),
-                              child: SizedBox(
-                                width: 220,
-                                child: Text(
+                            SizedBox(
+                              width: 480,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                                child: SelectableText(
                                   auditDetailsText(entry.details),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),

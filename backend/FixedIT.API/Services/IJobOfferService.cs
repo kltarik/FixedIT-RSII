@@ -17,6 +17,11 @@ public interface IJobOfferService
         PagedRequest request,
         CancellationToken cancellationToken);
 
+    Task<PagedResponse<JobOfferResponse>> GetMineAsync(
+        string professionalUserId,
+        PagedRequest request,
+        CancellationToken cancellationToken);
+
     Task<JobOfferResponse> AcceptAsync(
         string clientUserId,
         int jobId,

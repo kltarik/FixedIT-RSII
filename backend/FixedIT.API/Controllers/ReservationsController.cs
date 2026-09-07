@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace FixedIT.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/reservations")]
 public sealed class ReservationsController(
     IReservationService reservationService,
@@ -30,7 +31,6 @@ public sealed class ReservationsController(
         return CreatedAtAction(nameof(GetById), new { id = response.Id }, response);
     }
 
-    [AllowAnonymous]
     [HttpGet("/api/professionals/{professionalId:int}/available-slots")]
     public async Task<ActionResult<IReadOnlyCollection<AvailableSlotResponse>>> GetAvailableSlots(
         int professionalId,

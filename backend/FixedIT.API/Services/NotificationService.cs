@@ -48,6 +48,13 @@ public sealed class NotificationService(
             page.PageSize);
     }
 
+    public Task<int> GetUnreadCountAsync(string userId, CancellationToken cancellationToken)
+    {
+        return db.Notifications.CountAsync(
+            notification => notification.UserId == userId && !notification.IsRead,
+            cancellationToken);
+    }
+
     public async Task<NotificationResponse> MarkReadAsync(
         string userId,
         int notificationId,

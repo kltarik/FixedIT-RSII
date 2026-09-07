@@ -17,7 +17,13 @@ class RealtimeNotifications extends ChangeNotifier {
   bool loading = false;
   bool connected = false;
   String? error;
-  int get unreadCount => items.where((item) => !item.isRead).length;
+  int? _serverUnreadCount;
+  int get unreadCount =>
+      _serverUnreadCount ?? items.where((item) => !item.isRead).length;
+  int _page = 1;
+  int _pageCount = 1;
+  bool loadingMore = false;
+  bool get canLoadMore => _page < _pageCount;
 
   Future<void> start() async {
     if (_connection != null) return;
@@ -77,13 +83,42 @@ class RealtimeNotifications extends ChangeNotifier {
 
   Future<void> _reloadPersistedNotifications() async {
     try {
-      items = (await repository.getNotifications()).items;
+      final results = await Future.wait<Object>([
+        repository.getNotifications(),
+        repository.getUnreadNotificationCount(),
+      ]);
+      final page = results[0] as Paged<NotificationItem>;
+      items = page.items;
+      _page = page.page;
+      _pageCount = page.pageCount;
+      _serverUnreadCount = results[1] as int;
       error = null;
     } catch (exception) {
       error = userFacingError(
         exception,
         fallback: 'Propuštene obavijesti trenutno nije moguće učitati.',
       );
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (loadingMore || !canLoadMore) return;
+    loadingMore = true;
+    notifyListeners();
+    try {
+      final result = await repository.getNotifications(page: _page + 1);
+      final ids = items.map((item) => item.id).toSet();
+      items = [
+        ...items,
+        ...result.items.where((item) => !ids.contains(item.id)),
+      ];
+      _page = result.page;
+      _pageCount = result.pageCount;
+    } catch (exception) {
+      error = userFacingError(exception);
+    } finally {
+      loadingMore = false;
+      notifyListeners();
     }
   }
 
@@ -133,7 +168,17 @@ class RealtimeNotifications extends ChangeNotifier {
     final item = NotificationItem.fromJson(
       Map<String, dynamic>.from(args.first! as Map),
     );
+    NotificationItem? previous;
+    for (final current in items) {
+      if (current.id == item.id) {
+        previous = current;
+        break;
+      }
+    }
     items = [item, ...items.where((e) => e.id != item.id)];
+    if (!item.isRead && (previous == null || previous.isRead)) {
+      _serverUnreadCount = unreadCount + 1;
+    }
     notifyListeners();
     if (_localNotificationsReady) {
       try {
@@ -159,6 +204,9 @@ class RealtimeNotifications extends ChangeNotifier {
 
   Future<void> markRead(NotificationItem item) async {
     await repository.markNotificationRead(item.id);
+    if (!item.isRead && unreadCount > 0) {
+      _serverUnreadCount = unreadCount - 1;
+    }
     items = items
         .map(
           (current) => current.id == item.id
@@ -190,6 +238,7 @@ class RealtimeNotifications extends ChangeNotifier {
           ),
         )
         .toList();
+    _serverUnreadCount = 0;
     notifyListeners();
   }
 
@@ -205,6 +254,9 @@ class RealtimeNotifications extends ChangeNotifier {
     await c?.stop();
     connected = false;
     items = const [];
+    _serverUnreadCount = null;
+    _page = 1;
+    _pageCount = 1;
     _localNotificationsReady = false;
     notifyListeners();
   }
@@ -235,12 +287,18 @@ class ChatSession extends ChangeNotifier {
   bool loading = true;
   bool connected = false;
   String? error;
+  int _page = 1;
+  int _pageCount = 1;
+  bool loadingOlder = false;
+  bool get canLoadOlder => _page < _pageCount;
 
   Future<void> start() async {
     if (_connection != null) return;
     try {
       final history = await repository.getMessages(conversationId);
       messages = history.items.reversed.toList();
+      _page = history.page;
+      _pageCount = history.pageCount;
       final c = HubConnectionBuilder()
           .withUrl(
             '${ApiClient.normalizedBaseUrl}/hubs/chat',
@@ -254,6 +312,7 @@ class ChatSession extends ChangeNotifier {
       c.onreconnected(({connectionId}) async {
         connected = true;
         await c.invoke('JoinConversation', args: [conversationId]);
+        await _reloadLatestMessages();
         notifyListeners();
       });
       c.onreconnecting(({error}) {
@@ -279,6 +338,44 @@ class ChatSession extends ChangeNotifier {
       loading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _reloadLatestMessages() async {
+    final latest = await repository.getMessages(conversationId);
+    _mergeMessages(latest.items);
+    _pageCount = latest.pageCount;
+  }
+
+  Future<void> loadOlder() async {
+    if (loadingOlder || !canLoadOlder) return;
+    loadingOlder = true;
+    notifyListeners();
+    try {
+      final history = await repository.getMessages(
+        conversationId,
+        page: _page + 1,
+      );
+      _mergeMessages(history.items);
+      _page = history.page;
+      _pageCount = history.pageCount;
+    } catch (exception) {
+      error = userFacingError(exception);
+    } finally {
+      loadingOlder = false;
+      notifyListeners();
+    }
+  }
+
+  void _mergeMessages(Iterable<ChatMessage> incoming) {
+    final byId = {for (final message in messages) message.id: message};
+    for (final message in incoming) {
+      byId[message.id] = message;
+    }
+    messages = byId.values.toList()
+      ..sort((left, right) {
+        final byTime = left.sentAt.compareTo(right.sentAt);
+        return byTime != 0 ? byTime : left.id.compareTo(right.id);
+      });
   }
 
   Future<void> retry() async {

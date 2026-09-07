@@ -1,22 +1,15 @@
-using System.Text;
 using System.Text.Json;
 using FixedIT.API.Data;
-using FixedIT.Shared.Configuration;
+using FixedIT.API.Models;
 using FixedIT.Shared.Messages;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using RabbitMQ.Client;
 
 namespace FixedIT.API.Services;
 
 public sealed class RabbitMqPublisher(
-    AppDbContext db,
-    IConnection connection,
-    IOptions<RabbitMqOptions> options,
-    ILogger<RabbitMqPublisher> logger) : IReservationEventPublisher, INotificationEventPublisher
+    AppDbContext db) : IReservationEventPublisher, INotificationEventPublisher
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
-    private readonly RabbitMqOptions _options = options.Value;
 
     public async Task PublishAsync(
         ReservationStatusChangedEvent message,
@@ -36,7 +29,7 @@ public sealed class RabbitMqPublisher(
                 message.Status.ToString(),
                 message.ChangedByUserId,
                 message.Reason));
-        Publish(outgoingMessages, cancellationToken);
+        Enqueue(outgoingMessages, cancellationToken);
     }
 
     public async Task PublishNewMessageAsync(
@@ -64,7 +57,7 @@ public sealed class RabbitMqPublisher(
                 message.SenderUserId,
                 message.SenderName,
                 preview));
-        Publish(outgoingMessages, cancellationToken);
+        Enqueue(outgoingMessages, cancellationToken);
     }
 
     public async Task PublishPaymentCompletedAsync(
@@ -85,14 +78,14 @@ public sealed class RabbitMqPublisher(
                 message.Amount,
                 message.Currency,
                 message.PayPalOrderId));
-        Publish(outgoingMessages, cancellationToken);
+        Enqueue(outgoingMessages, cancellationToken);
     }
 
     public Task PublishPasswordResetAsync(
         PasswordResetRequestedEvent message,
         CancellationToken cancellationToken)
     {
-        Publish(
+        Enqueue(
             [new PasswordResetRequestedMessage(
                 Guid.NewGuid(),
                 message.UserId,
@@ -105,46 +98,21 @@ public sealed class RabbitMqPublisher(
         return Task.CompletedTask;
     }
 
-    private void Publish(
+    private void Enqueue(
         IEnumerable<BaseNotificationMessage> messages,
         CancellationToken cancellationToken)
     {
-        var outgoingMessages = messages.ToArray();
-        if (outgoingMessages.Length == 0)
-        {
-            return;
-        }
-
         cancellationToken.ThrowIfCancellationRequested();
-        using var channel = connection.CreateModel();
-        DeclareTopology(channel);
-        channel.ConfirmSelect();
-        foreach (var message in outgoingMessages)
+        db.OutboxMessages.AddRange(messages.Select(message => new OutboxMessage
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var properties = channel.CreateBasicProperties();
-            properties.Persistent = true;
-            properties.ContentType = "application/json";
-            properties.ContentEncoding = "utf-8";
-            properties.MessageId = message.MessageId.ToString("D");
-            properties.Type = message.GetType().Name;
-            properties.Timestamp = new AmqpTimestamp(
-                new DateTimeOffset(message.OccurredAt).ToUnixTimeSeconds());
-            var body = Encoding.UTF8.GetBytes(
-                JsonSerializer.Serialize<BaseNotificationMessage>(message, SerializerOptions));
-            channel.BasicPublish(
-                _options.ExchangeName,
-                _options.RoutingKey,
-                mandatory: true,
-                properties,
-                body);
-        }
-
-        channel.WaitForConfirmsOrDie(
-            TimeSpan.FromSeconds(_options.PublishConfirmTimeoutSeconds));
-        logger.LogInformation(
-            "Published {MessageCount} notification event(s) to RabbitMQ.",
-            outgoingMessages.Length);
+            Id = message.MessageId,
+            MessageType = message.GetType().Name,
+            Payload = JsonSerializer.Serialize<BaseNotificationMessage>(
+                message,
+                SerializerOptions),
+            OccurredAt = message.OccurredAt,
+            CreatedAt = DateTime.UtcNow
+        }));
     }
 
     private async Task<IReadOnlyCollection<NotificationRecipient>> GetRecipientsAsync(
@@ -179,43 +147,6 @@ public sealed class RabbitMqPublisher(
         }
 
         return recipients;
-    }
-
-    private void DeclareTopology(IModel channel)
-    {
-        channel.ExchangeDeclare(
-            _options.ExchangeName,
-            ExchangeType.Direct,
-            durable: true,
-            autoDelete: false);
-        channel.ExchangeDeclare(
-            _options.DeadLetterExchangeName,
-            ExchangeType.Direct,
-            durable: true,
-            autoDelete: false);
-        channel.QueueDeclare(
-            _options.DeadLetterQueueName,
-            durable: true,
-            exclusive: false,
-            autoDelete: false);
-        channel.QueueBind(
-            _options.DeadLetterQueueName,
-            _options.DeadLetterExchangeName,
-            _options.DeadLetterRoutingKey);
-        channel.QueueDeclare(
-            _options.QueueName,
-            durable: true,
-            exclusive: false,
-            autoDelete: false,
-            arguments: new Dictionary<string, object>
-            {
-                ["x-dead-letter-exchange"] = _options.DeadLetterExchangeName,
-                ["x-dead-letter-routing-key"] = _options.DeadLetterRoutingKey
-            });
-        channel.QueueBind(
-            _options.QueueName,
-            _options.ExchangeName,
-            _options.RoutingKey);
     }
 
     private sealed record NotificationRecipient(string Id, string Email, string Name);

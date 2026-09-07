@@ -2,6 +2,7 @@ using FixedIT.API.Configuration;
 using FixedIT.API.Constants;
 using FixedIT.API.CustomExceptions;
 using FixedIT.API.DTOs.Auth;
+using FixedIT.API.DTOs.Common;
 using FixedIT.API.Extensions;
 using FixedIT.API.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -14,6 +15,7 @@ namespace FixedIT.API.Controllers;
 [Route("api/auth")]
 public sealed class AuthController(
     IAuthService authService,
+    IReferenceDataService referenceDataService,
     IOptions<JwtOptions> jwtOptions) : ControllerBase
 {
     private readonly JwtOptions _jwtOptions = jwtOptions.Value;
@@ -27,6 +29,14 @@ public sealed class AuthController(
         var response = await authService.RegisterAsync(request, cancellationToken);
         SetRefreshTokenCookie(response.RefreshToken);
         return Ok(response);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("register/options")]
+    public async Task<ActionResult<ReferenceDataResponse>> GetRegistrationOptions(
+        CancellationToken cancellationToken)
+    {
+        return Ok(await referenceDataService.GetAsync(cancellationToken));
     }
 
     [AllowAnonymous]

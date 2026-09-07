@@ -9,12 +9,12 @@ using Microsoft.AspNetCore.Mvc;
 namespace FixedIT.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/jobs")]
 public sealed class JobPostingsController(
     IJobSearchService jobSearchService,
     IJobPostingService jobPostingService) : ControllerBase
 {
-    [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult<PagedResponse<JobSearchResponse>>> GetPage(
         [FromQuery] PagedRequest request,
@@ -23,7 +23,6 @@ public sealed class JobPostingsController(
         return Ok(await jobPostingService.GetPageAsync(request, cancellationToken));
     }
 
-    [AllowAnonymous]
     [HttpGet("search")]
     public async Task<ActionResult<PagedResponse<JobSearchResponse>>> Search(
         [FromQuery] JobSearchRequest filters,
@@ -48,7 +47,6 @@ public sealed class JobPostingsController(
             cancellationToken));
     }
 
-    [AllowAnonymous]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<JobPostingDetailResponse>> GetById(
         int id,

@@ -29,8 +29,8 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
 
   Future<void> _initialize() async {
     try {
-      final cities = await widget.repository.getCities();
-      final categories = await widget.repository.getCategories();
+      final cities = await widget.repository.getAllCities();
+      final categories = await widget.repository.getAllCategories();
       if (mounted) {
         setState(() {
           _cities = cities.items;
@@ -100,7 +100,7 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
   }
 
   Future<void> _edit(ProfessionalRecord professional) async {
-    final categories = await widget.repository.getCategories();
+    final categories = await widget.repository.getAllCategories();
     if (!mounted || categories.items.isEmpty) return;
     final bio = TextEditingController(text: professional.bio);
     final hourlyRate = TextEditingController(
@@ -109,63 +109,111 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
     final experience = TextEditingController(
       text: professional.experience.toString(),
     );
+    final formKey = GlobalKey<FormState>();
     final selected = professional.categories.map((item) => item.id).toSet();
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: Text('Uredi profil: ${professional.name}'),
-          content: SizedBox(
-            width: 560,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextField(
-                    controller: bio,
-                    minLines: 3,
-                    maxLines: 6,
-                    decoration: const InputDecoration(labelText: 'Opis'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: hourlyRate,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Satnica (EUR)',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: experience,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Godine iskustva',
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Kategorije',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  for (final category in categories.items)
-                    CheckboxListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      value: selected.contains(category.id),
-                      title: Text(category.name),
-                      onChanged: (checked) => setDialogState(() {
-                        if (checked ?? false) {
-                          selected.add(category.id);
-                        } else {
-                          selected.remove(category.id);
+          content: Form(
+            key: formKey,
+            child: SizedBox(
+              width: 560,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: bio,
+                      minLines: 3,
+                      maxLines: 6,
+                      decoration: const InputDecoration(labelText: 'Opis'),
+                      validator: (value) {
+                        final text = value?.trim() ?? '';
+                        if (text.isEmpty) return 'Opis je obavezan.';
+                        if (text.length > 2000) {
+                          return 'Opis može imati najviše 2000 znakova.';
                         }
-                      }),
+                        return null;
+                      },
                     ),
-                ],
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: hourlyRate,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Satnica (EUR)',
+                        helperText: 'Unesite iznos od 0,01 do 1.000.000 EUR.',
+                      ),
+                      validator: (value) {
+                        final parsed = double.tryParse(
+                          (value ?? '').replaceAll(',', '.'),
+                        );
+                        return parsed == null || parsed <= 0 || parsed > 1000000
+                            ? 'Satnica mora biti od 0,01 do 1.000.000 EUR.'
+                            : null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: experience,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Godine iskustva',
+                        helperText: 'Dozvoljena vrijednost je od 0 do 100.',
+                      ),
+                      validator: (value) {
+                        final parsed = int.tryParse(value ?? '');
+                        return parsed == null || parsed < 0 || parsed > 100
+                            ? 'Godine iskustva moraju biti od 0 do 100.'
+                            : null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'Kategorije',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    FormField<bool>(
+                      initialValue: selected.isNotEmpty,
+                      validator: (value) => selected.isEmpty
+                          ? 'Odaberite najmanje jednu kategoriju.'
+                          : null,
+                      builder: (field) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final category in categories.items)
+                            CheckboxListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              value: selected.contains(category.id),
+                              title: Text(category.name),
+                              onChanged: (checked) => setDialogState(() {
+                                if (checked ?? false) {
+                                  selected.add(category.id);
+                                } else {
+                                  selected.remove(category.id);
+                                }
+                                field.didChange(selected.isNotEmpty);
+                              }),
+                            ),
+                          if (field.hasError)
+                            Text(
+                              field.errorText!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontSize: 12,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -176,30 +224,17 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
             ),
             FilledButton(
               onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
                 final rate = double.tryParse(
                   hourlyRate.text.replaceAll(',', '.'),
                 );
                 final years = int.tryParse(experience.text);
-                if (rate == null ||
-                    rate <= 0 ||
-                    rate > 1000000 ||
-                    years == null ||
-                    years < 0 ||
-                    years > 100 ||
-                    selected.isEmpty ||
-                    bio.text.trim().isEmpty) {
-                  await showApiErrorDialog(
-                    dialogContext,
-                    'Unesite opis, pozitivnu satnicu do 1.000.000 EUR, iskustvo od 0 do 100 i najmanje jednu kategoriju.',
-                  );
-                  return;
-                }
                 try {
                   await widget.repository.updateProfessional(
                     id: professional.id,
                     bio: bio.text,
-                    hourlyRate: rate,
-                    yearsOfExperience: years,
+                    hourlyRate: rate!,
+                    yearsOfExperience: years!,
                     categoryIds: selected.toList(),
                   );
                   if (dialogContext.mounted) {

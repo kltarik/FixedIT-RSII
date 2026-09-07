@@ -17,7 +17,7 @@ class ProfessionalDetailScreen extends StatefulWidget {
 
 class _ProfessionalDetailScreenState extends State<ProfessionalDetailScreen> {
   Professional? professional;
-  List<Review> reviews = const [];
+  Paged<Review>? reviews;
   String? error;
   @override
   void initState() {
@@ -35,7 +35,7 @@ class _ProfessionalDetailScreenState extends State<ProfessionalDetailScreen> {
       if (mounted) {
         setState(() {
           professional = values[0] as Professional;
-          reviews = (values[1] as Paged<Review>).items;
+          reviews = values[1] as Paged<Review>;
         });
       }
     } catch (e) {
@@ -159,10 +159,10 @@ class _ProfessionalDetailScreenState extends State<ProfessionalDetailScreen> {
             ),
           const SizedBox(height: 16),
           Text('Recenzije', style: Theme.of(context).textTheme.titleLarge),
-          if (reviews.isEmpty)
+          if (reviews!.items.isEmpty)
             const EmptyView('Još nema recenzija.')
           else
-            ...reviews.map(
+            ...reviews!.items.map(
               (r) => Card(
                 child: ListTile(
                   title: Text('${r.clientName} • ${'★' * r.rating}'),
@@ -171,10 +171,27 @@ class _ProfessionalDetailScreenState extends State<ProfessionalDetailScreen> {
                 ),
               ),
             ),
+          PageControls(
+            page: reviews!.page,
+            pageCount: reviews!.pageCount,
+            onPageChanged: _loadReviews,
+          ),
           const SizedBox(height: 80),
         ],
       ),
     );
+  }
+
+  Future<void> _loadReviews(int page) async {
+    try {
+      final value = await context.read<MobileRepository>().getReviews(
+        widget.professionalId,
+        page: page,
+      );
+      if (mounted) setState(() => reviews = value);
+    } catch (exception) {
+      if (mounted) await showFailure(context, exception);
+    }
   }
 
   Future<void> _reserve(Professional p) async {

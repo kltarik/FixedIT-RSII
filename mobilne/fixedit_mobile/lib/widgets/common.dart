@@ -124,6 +124,40 @@ class ErrorView extends StatelessWidget {
   );
 }
 
+class PageControls extends StatelessWidget {
+  const PageControls({
+    super.key,
+    required this.page,
+    required this.pageCount,
+    required this.onPageChanged,
+  });
+
+  final int page;
+  final int pageCount;
+  final ValueChanged<int> onPageChanged;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 12),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton(
+          tooltip: 'Prethodna stranica',
+          onPressed: page > 1 ? () => onPageChanged(page - 1) : null,
+          icon: const Icon(Icons.chevron_left),
+        ),
+        Text('Stranica $page od $pageCount'),
+        IconButton(
+          tooltip: 'Sljedeća stranica',
+          onPressed: page < pageCount ? () => onPageChanged(page + 1) : null,
+          icon: const Icon(Icons.chevron_right),
+        ),
+      ],
+    ),
+  );
+}
+
 class NetworkAvatar extends StatelessWidget {
   const NetworkAvatar({
     super.key,

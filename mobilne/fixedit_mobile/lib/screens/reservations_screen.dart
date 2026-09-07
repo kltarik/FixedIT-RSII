@@ -26,13 +26,13 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
     load();
   }
 
-  Future<void> load() async {
+  Future<void> load([int page = 1]) async {
     setState(() {
       result = null;
       error = null;
     });
     try {
-      final value = await widget.repository.getReservations();
+      final value = await widget.repository.getReservations(page: page);
       if (mounted) setState(() => result = value);
     } catch (e) {
       if (mounted) setState(() => error = userError(e));
@@ -74,10 +74,15 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
                     '${dateTime.format(r.scheduledAt)}\n${r.description}',
                   ),
                   isThreeLine: true,
-                  trailing: Chip(label: Text(reservationStatus(r.status))),
+                  trailing: Chip(label: Text(r.statusName)),
                 ),
               ),
             ),
+          PageControls(
+            page: result!.page,
+            pageCount: result!.pageCount,
+            onPageChanged: load,
+          ),
           const SizedBox(height: 90),
         ],
       ),

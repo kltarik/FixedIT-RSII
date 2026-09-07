@@ -11,7 +11,7 @@ namespace FixedIT.NotificationService.Consumers;
 public sealed class NotificationConsumer(
     IConnectionFactory connectionFactory,
     IEmailService emailService,
-    ProcessedMessageCache processedMessages,
+    IServiceScopeFactory scopeFactory,
     IOptions<RabbitMqOptions> options,
     ILogger<NotificationConsumer> logger) : BackgroundService
 {
@@ -97,7 +97,10 @@ public sealed class NotificationConsumer(
             }
 
             messageId = notification.MessageId;
-            if (processedMessages.Contains(notification.MessageId))
+            using var scope = scopeFactory.CreateScope();
+            var inbox = scope.ServiceProvider.GetRequiredService<NotificationInbox>();
+            var claim = await inbox.TryClaimAsync(notification.MessageId, stoppingToken);
+            if (claim == InboxClaimResult.Completed)
             {
                 logger.LogWarning(
                     "Skipping duplicate notification message {MessageId}.",
@@ -106,8 +109,26 @@ public sealed class NotificationConsumer(
                 return;
             }
 
-            await SendWithRetryAsync(notification, stoppingToken);
-            processedMessages.Add(notification.MessageId);
+            if (claim == InboxClaimResult.InProgress)
+            {
+                logger.LogWarning(
+                    "Notification message {MessageId} is already being processed.",
+                    notification.MessageId);
+                await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+                channel.BasicNack(eventArgs.DeliveryTag, multiple: false, requeue: true);
+                return;
+            }
+
+            try
+            {
+                await SendWithRetryAsync(notification, stoppingToken);
+                await inbox.CompleteAsync(notification.MessageId, stoppingToken);
+            }
+            catch
+            {
+                await inbox.ReleaseAsync(notification.MessageId, stoppingToken);
+                throw;
+            }
             channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
             logger.LogInformation(
                 "Acknowledged notification message {MessageId} with delivery tag {DeliveryTag}.",

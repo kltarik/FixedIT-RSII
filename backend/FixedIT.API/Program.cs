@@ -201,6 +201,7 @@ builder.Services.AddSingleton<IConnection>(serviceProvider =>
     serviceProvider
         .GetRequiredService<IConnectionFactory>()
         .CreateConnection("FixedIT.API"));
+builder.Services.AddHostedService<OutboxPublisherService>();
 builder.Services.AddHttpClient(
     PayPalHttpClientNames.Api,
     (serviceProvider, client) =>

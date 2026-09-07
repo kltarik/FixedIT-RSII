@@ -90,6 +90,17 @@ public sealed class ReservationStateService(
             newStatus,
             normalizedReason,
             now);
+        await eventPublisher.PublishAsync(
+            new ReservationStatusChangedEvent(
+                reservation.Id,
+                reservation.ClientUserId,
+                reservation.ProfessionalProfile.UserId,
+                previousStatus,
+                newStatus,
+                now,
+                userId,
+                normalizedReason),
+            cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -107,28 +118,6 @@ public sealed class ReservationStateService(
                     notification.Id,
                     reservation.Id);
             }
-        }
-
-        try
-        {
-            await eventPublisher.PublishAsync(
-                new ReservationStatusChangedEvent(
-                    reservation.Id,
-                    reservation.ClientUserId,
-                    reservation.ProfessionalProfile.UserId,
-                    previousStatus,
-                    newStatus,
-                    now,
-                    userId,
-                    normalizedReason),
-                cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(
-                exception,
-                "RabbitMQ event failed after reservation {ReservationId} status was committed.",
-                reservation.Id);
         }
 
         return await GetResponseAsync(reservation.Id, cancellationToken);

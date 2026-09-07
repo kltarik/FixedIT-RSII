@@ -153,6 +153,35 @@ public sealed class JobOfferService(
             page.PageSize);
     }
 
+    public async Task<PagedResponse<JobOfferResponse>> GetMineAsync(
+        string professionalUserId,
+        PagedRequest request,
+        CancellationToken cancellationToken)
+    {
+        var professionalId = await db.ProfessionalProfiles
+            .Where(profile => profile.UserId == professionalUserId)
+            .Select(profile => (int?)profile.Id)
+            .SingleOrDefaultAsync(cancellationToken)
+            ?? throw new NotFoundException("Profil profesionalca nije pronađen.");
+        var page = paginationService.Normalize(request);
+        var query = db.JobOffers
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(offer => offer.ProfessionalProfileId == professionalId);
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderByDescending(offer => offer.Id)
+            .Skip(page.Skip)
+            .Take(page.PageSize)
+            .Select(OfferProjection)
+            .ToListAsync(cancellationToken);
+        return new PagedResponse<JobOfferResponse>(
+            items,
+            total,
+            page.Page,
+            page.PageSize);
+    }
+
     public Task<JobOfferResponse> AcceptAsync(
         string clientUserId,
         int jobId,
@@ -194,9 +223,12 @@ public sealed class JobOfferService(
         var job = await GetOwnedJobForUpdateAsync(clientUserId, jobId, cancellationToken);
         var offers = await db.JobOffers
             .IgnoreQueryFilters()
+            .Include(offer => offer.ProfessionalProfile)
+            .ThenInclude(profile => profile.User)
             .Where(offer => offer.JobPostingId == jobId)
             .OrderBy(offer => offer.Id)
             .ToListAsync(cancellationToken);
+        var originalStatuses = offers.ToDictionary(offer => offer.Id, offer => offer.Status);
         var target = offers.SingleOrDefault(offer => offer.Id == offerId)
             ?? throw new NotFoundException("Ponuda za posao nije pronađena.");
 
@@ -246,6 +278,23 @@ public sealed class JobOfferService(
             target.Status = JobOfferStatus.Rejected;
         }
 
+        var now = DateTime.UtcNow;
+        var notifications = offers
+            .Where(offer => offer.Status != originalStatuses[offer.Id])
+            .Select(offer => new Notification
+            {
+                UserId = offer.ProfessionalProfile.UserId,
+                Title = "Status ponude je promijenjen",
+                Body = offer.Status == JobOfferStatus.Accepted
+                    ? $"Vaša ponuda za oglas \"{job.Title}\" je prihvaćena."
+                    : $"Vaša ponuda za oglas \"{job.Title}\" je odbijena.",
+                IsRead = false,
+                CreatedAt = now,
+                Type = NotificationType.General
+            })
+            .ToArray();
+        db.Notifications.AddRange(notifications);
+
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -256,6 +305,21 @@ public sealed class JobOfferService(
         }
 
         await transaction.CommitAsync(cancellationToken);
+        foreach (var notification in notifications)
+        {
+            try
+            {
+                await notificationService.PushAsync(notification, cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(
+                    exception,
+                    "SignalR notification {NotificationId} failed after offer status was committed.",
+                    notification.Id);
+            }
+        }
+
         return await GetOfferAsync(target.Id, cancellationToken);
     }
 

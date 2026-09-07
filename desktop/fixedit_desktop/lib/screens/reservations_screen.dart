@@ -48,8 +48,8 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
           to: _toFilter,
         ),
         widget.repository.getReservationStatuses(),
-        widget.repository.getCategories(),
-        widget.repository.getCities(),
+        widget.repository.getAllCategories(),
+        widget.repository.getAllCities(),
       ]);
       if (mounted) {
         setState(() {
@@ -106,13 +106,6 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
     } finally {
       if (mounted) setState(() => _busyId = null);
     }
-  }
-
-  String _statusName(int id) {
-    for (final status in _statuses) {
-      if (status.id == id) return status.name;
-    }
-    return reservationStatusName(id);
   }
 
   Future<void> _pickDate(bool start) async {
@@ -319,7 +312,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
                             ),
                             DataCell(
                               StatusPill(
-                                label: _statusName(reservation.status),
+                                label: reservation.statusName,
                                 positive: reservation.status != 5,
                               ),
                             ),

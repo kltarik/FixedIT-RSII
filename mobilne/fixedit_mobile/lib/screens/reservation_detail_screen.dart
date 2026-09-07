@@ -67,7 +67,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          reservationStatus(r.status),
+                          r.statusName,
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
                       ),
@@ -134,7 +134,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.history),
-                title: Text(reservationStatus(history.newStatus)),
+                title: Text(history.newStatusName),
                 subtitle: Text(
                   '${dateTime.format(history.changedAt)}${history.reason == null ? '' : '\nRazlog: ${history.reason}'}',
                 ),

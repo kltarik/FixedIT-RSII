@@ -203,7 +203,7 @@ class _CitiesTabState extends State<_CitiesTab> {
   }
 
   Future<void> _edit([CityRecord? city]) async {
-    final countries = await widget.repository.getCountries();
+    final countries = await widget.repository.getAllCountries();
     if (!mounted) return;
     if (countries.items.isEmpty) {
       await showApiErrorDialog(context, 'Prvo je potrebno dodati državu.');
@@ -451,48 +451,13 @@ class _StatusesTabState extends State<_StatusesTab> {
     }
   }
 
-  Future<void> _edit([ReservationStatusRecord? status]) async {
-    final missingIds = [
-      for (var id = 1; id <= 5; id++)
-        if (!(_items ?? const []).any((item) => item.id == id)) id,
-    ];
-    if (status == null && missingIds.isEmpty) {
-      await showApiErrorDialog(
-        context,
-        'Svih pet dozvoljenih statusa već postoji.',
-      );
-      return;
-    }
-
-    var selectedId = status?.id ?? missingIds.first;
-    final name = TextEditingController(
-      text: status?.name ?? reservationStatusName(selectedId),
-    );
-    final description = TextEditingController(text: status?.description);
+  Future<void> _edit(ReservationStatusRecord status) async {
+    final name = TextEditingController(text: status.name);
+    final description = TextEditingController(text: status.description);
     final saved = await _showForm(
       context,
-      title: status == null ? 'Novi status rezervacije' : 'Uredi status',
+      title: 'Uredi status',
       fields: [
-        if (status == null)
-          StatefulBuilder(
-            builder: (context, setDialogState) => DropdownButtonFormField<int>(
-              initialValue: selectedId,
-              decoration: const InputDecoration(labelText: 'Šifra statusa'),
-              items: missingIds
-                  .map(
-                    (id) => DropdownMenuItem(
-                      value: id,
-                      child: Text('$id - ${reservationStatusName(id)}'),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value == null) return;
-                setDialogState(() => selectedId = value);
-                name.text = reservationStatusName(value);
-              },
-            ),
-          ),
         TextFormField(
           controller: name,
           decoration: const InputDecoration(labelText: 'Naziv'),
@@ -506,17 +471,11 @@ class _StatusesTabState extends State<_StatusesTab> {
           validator: (value) => _requiredText(value, 'Opis statusa', 2000),
         ),
       ],
-      onSave: () => status == null
-          ? widget.repository.createReservationStatus(
-              id: selectedId,
-              name: name.text,
-              description: description.text,
-            )
-          : widget.repository.updateReservationStatus(
-              id: status.id,
-              name: name.text,
-              description: description.text,
-            ),
+      onSave: () => widget.repository.updateReservationStatus(
+        id: status.id,
+        name: name.text,
+        description: description.text,
+      ),
     );
     name.dispose();
     description.dispose();
@@ -539,25 +498,15 @@ class _StatusesTabState extends State<_StatusesTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _search,
-                decoration: const InputDecoration(
-                  labelText: 'Pretraži statuse',
-                  prefixIcon: Icon(Icons.search),
-                ),
-                onSubmitted: (_) => setState(() {}),
-              ),
-            ),
-            const SizedBox(width: 12),
-            FilledButton.icon(
-              onPressed: _edit,
-              icon: const Icon(Icons.add),
-              label: const Text('Dodaj'),
-            ),
-          ],
+        TextField(
+          controller: _search,
+          decoration: const InputDecoration(
+            labelText: 'Pretraži statuse',
+            prefixIcon: Icon(Icons.search),
+            helperText:
+                'Pet statusa je sastavni dio rezervacijskog procesa; moguće je uređivati njihove nazive i opise.',
+          ),
+          onChanged: (_) => setState(() {}),
         ),
         const SizedBox(height: 12),
         Expanded(
@@ -585,15 +534,10 @@ class _StatusesTabState extends State<_StatusesTab> {
                               ),
                             ),
                             DataCell(
-                              _actions(
-                                onEdit: () => _edit(status),
-                                onDelete: () => _deleteReference(
-                                  context,
-                                  'status ${status.name}',
-                                  () => widget.repository
-                                      .deleteReservationStatus(status.id),
-                                  _load,
-                                ),
+                              IconButton(
+                                tooltip: 'Uredi',
+                                onPressed: () => _edit(status),
+                                icon: const Icon(Icons.edit_outlined),
                               ),
                             ),
                           ],

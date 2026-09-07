@@ -47,12 +47,24 @@ public sealed class AnalyticsService(
             .ToArray();
         var reservationStatusRows = await db.Reservations
             .IgnoreQueryFilters()
-            .GroupBy(reservation => reservation.Status)
-            .Select(group => new { Status = group.Key, Count = group.Count() })
+            .GroupBy(reservation => new
+            {
+                reservation.Status,
+                StatusName = reservation.StatusDefinition.Name
+            })
+            .Select(group => new
+            {
+                group.Key.Status,
+                group.Key.StatusName,
+                Count = group.Count()
+            })
             .OrderBy(item => item.Status)
             .ToListAsync(cancellationToken);
         var reservationsByStatus = reservationStatusRows
-            .Select(item => new ReservationStatusCountResponse(item.Status, item.Count))
+            .Select(item => new ReservationStatusCountResponse(
+                item.Status,
+                item.StatusName,
+                item.Count))
             .ToArray();
 
         return new AdminStatsResponse(

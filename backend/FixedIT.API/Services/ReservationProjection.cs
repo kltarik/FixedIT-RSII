@@ -26,6 +26,7 @@ internal static class ReservationProjection
             reservation.DurationMinutes,
             reservation.TotalPrice,
             reservation.Status,
+            reservation.StatusDefinition.Name,
             reservation.CancellationReason,
             reservation.Payment != null
                 && reservation.Payment.Status == PaymentStatus.Completed,
@@ -44,7 +45,11 @@ internal static class ReservationProjection
                 .Select(history => new ReservationStatusHistoryResponse(
                     history.Id,
                     history.PreviousStatus,
+                    history.PreviousStatusDefinition == null
+                        ? null
+                        : history.PreviousStatusDefinition.Name,
                     history.NewStatus,
+                    history.NewStatusDefinition.Name,
                     history.ChangedByUserId,
                     history.Reason,
                     history.ChangedAt))

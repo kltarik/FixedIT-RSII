@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace FixedIT.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/reviews")]
 public sealed class ReviewsController(IReviewService reviewService) : ControllerBase
 {
@@ -25,7 +26,6 @@ public sealed class ReviewsController(IReviewService reviewService) : Controller
         return StatusCode(StatusCodes.Status201Created, response);
     }
 
-    [AllowAnonymous]
     [HttpGet("/api/professionals/{professionalId:int}/reviews")]
     public async Task<ActionResult<PagedResponse<ReviewResponse>>> GetForProfessional(
         int professionalId,

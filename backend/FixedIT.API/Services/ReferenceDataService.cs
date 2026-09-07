@@ -1,4 +1,5 @@
 using FixedIT.API.CustomExceptions;
+using FixedIT.API.Configuration;
 using FixedIT.API.Data;
 using FixedIT.API.DTOs.Admin;
 using FixedIT.API.DTOs.Common;
@@ -6,33 +7,44 @@ using FixedIT.API.Models;
 using FixedIT.API.Models.Enums;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace FixedIT.API.Services;
 
 public sealed class ReferenceDataService(
     AppDbContext db,
-    IPaginationService paginationService) : IReferenceDataService
+    IPaginationService paginationService,
+    IOptions<PaginationOptions> paginationOptions) : IReferenceDataService
 {
+    private readonly int _maximumOptionCount = paginationOptions.Value.MaxPageSize;
+
     public async Task<ReferenceDataResponse> GetAsync(CancellationToken cancellationToken)
     {
         var cities = await db.Cities
             .AsNoTracking()
             .OrderBy(city => city.Name)
+            .ThenBy(city => city.Id)
+            .Take(_maximumOptionCount)
             .Select(city => new CityOptionResponse(city.Id, city.Name, city.CountryId))
             .ToArrayAsync(cancellationToken);
         var categories = await db.Categories
             .AsNoTracking()
             .OrderBy(category => category.Name)
+            .ThenBy(category => category.Id)
+            .Take(_maximumOptionCount)
             .Select(category => new ReferenceOptionResponse(category.Id, category.Name))
             .ToArrayAsync(cancellationToken);
         var countries = await db.Countries
             .AsNoTracking()
             .OrderBy(country => country.Name)
+            .ThenBy(country => country.Id)
+            .Take(_maximumOptionCount)
             .Select(country => new CountryOptionResponse(country.Id, country.Name, country.Code))
             .ToArrayAsync(cancellationToken);
         var statuses = await db.ReservationStatusDefinitions
             .AsNoTracking()
             .OrderBy(status => status.Id)
+            .Take(_maximumOptionCount)
             .Select(status => new ReservationStatusOptionResponse(
                 (int)status.Id,
                 status.Name,
@@ -257,32 +269,6 @@ public sealed class ReferenceDataService(
             .ToArrayAsync(cancellationToken);
     }
 
-    public async Task<ReservationStatusDefinitionResponse> CreateReservationStatusAsync(
-        SaveReservationStatusDefinitionRequest request,
-        CancellationToken cancellationToken)
-    {
-        var statusId = request.Id!.Value;
-        if (await db.ReservationStatusDefinitions.AnyAsync(
-                item => item.Id == statusId,
-                cancellationToken))
-        {
-            throw new BusinessException("Status rezervacije s ovom šifrom već postoji.");
-        }
-
-        var status = new ReservationStatusDefinition
-        {
-            Id = statusId,
-            Name = RequiredText(request.Name, "Naziv statusa"),
-            Description = RequiredText(request.Description, "Opis statusa")
-        };
-        db.ReservationStatusDefinitions.Add(status);
-        await db.SaveChangesAsync(cancellationToken);
-        return new ReservationStatusDefinitionResponse(
-            (int)status.Id,
-            status.Name,
-            status.Description);
-    }
-
     public async Task<ReservationStatusDefinitionResponse> UpdateReservationStatusAsync(
         int id,
         UpdateReservationStatusDefinitionRequest request,
@@ -301,35 +287,6 @@ public sealed class ReferenceDataService(
         status.Description = RequiredText(request.Description, "Opis statusa");
         await db.SaveChangesAsync(cancellationToken);
         return new ReservationStatusDefinitionResponse((int)status.Id, status.Name, status.Description);
-    }
-
-    public async Task DeleteReservationStatusAsync(
-        int id,
-        CancellationToken cancellationToken)
-    {
-        if (!Enum.IsDefined(typeof(ReservationStatus), id))
-        {
-            throw new NotFoundException("Status rezervacije nije pronađen.");
-        }
-
-        var statusId = (ReservationStatus)id;
-        var status = await db.ReservationStatusDefinitions
-            .SingleOrDefaultAsync(item => item.Id == statusId, cancellationToken)
-            ?? throw new NotFoundException("Status rezervacije nije pronađen.");
-        var inUse = await db.Reservations
-                .IgnoreQueryFilters()
-                .AnyAsync(item => item.Status == statusId, cancellationToken)
-            || await db.ReservationStatusHistories.AnyAsync(
-                item => item.NewStatus == statusId || item.PreviousStatus == statusId,
-                cancellationToken);
-        if (inUse)
-        {
-            throw new BusinessException(
-                "Status rezervacije nije moguće obrisati dok ga koriste rezervacije ili historija statusa.");
-        }
-
-        db.ReservationStatusDefinitions.Remove(status);
-        await db.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<PagedResponse<TResponse>> PageAsync<TEntity, TResponse>(

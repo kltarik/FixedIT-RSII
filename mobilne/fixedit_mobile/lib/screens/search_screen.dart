@@ -50,13 +50,14 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  Future<void> search() async {
+  Future<void> search([int page = 1]) async {
     setState(() {
       result = null;
       error = null;
     });
     try {
       final value = await widget.repository.getProfessionals(
+        page: page,
         name: name.text,
         cityId: city,
         categoryId: category,
@@ -196,8 +197,15 @@ class _SearchScreenState extends State<SearchScreen> {
               ? const EmptyView('Nema profesionalaca za odabrane filtere.')
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
-                  itemCount: result!.items.length,
+                  itemCount: result!.items.length + 1,
                   itemBuilder: (_, i) {
+                    if (i == result!.items.length) {
+                      return PageControls(
+                        page: result!.page,
+                        pageCount: result!.pageCount,
+                        onPageChanged: search,
+                      );
+                    }
                     final p = result!.items[i];
                     return Card(
                       child: ListTile(

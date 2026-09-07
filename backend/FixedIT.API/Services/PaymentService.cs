@@ -76,7 +76,9 @@ internal sealed class PaymentService(
             reservation.Id,
             reservation.TotalPrice,
             _options.Currency,
-            BuildRequestId("order", Guid.NewGuid().ToString("N")),
+            BuildRequestId(
+                "order",
+                reservation.Id.ToString(CultureInfo.InvariantCulture)),
             cancellationToken);
         if (string.IsNullOrWhiteSpace(order.ApprovalUrl))
         {
@@ -149,6 +151,7 @@ internal sealed class PaymentService(
             payment,
             capture.CaptureId,
             DateTime.UtcNow);
+        await EnqueueCompletionAsync(completion, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         await DispatchCompletionAsync(completion, cancellationToken);
@@ -313,6 +316,7 @@ internal sealed class PaymentService(
             payment,
             confirmation.CaptureId,
             confirmation.CompletedAt);
+        await EnqueueCompletionAsync(completion, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         await DispatchCompletionAsync(completion, cancellationToken);
@@ -355,25 +359,21 @@ internal sealed class PaymentService(
                 completion.Payment.Id);
         }
 
-        try
-        {
-            await notificationEventPublisher.PublishPaymentCompletedAsync(
-                new PaymentCompletedEvent(
-                    completion.Payment.ReservationId,
-                    completion.Payment.Reservation.ClientUserId,
-                    completion.Payment.Amount,
-                    completion.Payment.Currency,
-                    completion.Payment.PayPalOrderId,
-                    completion.Payment.CompletedAt!.Value),
-                cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(
-                exception,
-                "Failed to publish notification event for completed payment {PaymentId}.",
-                completion.Payment.Id);
-        }
+    }
+
+    private Task EnqueueCompletionAsync(
+        PaymentCompletion completion,
+        CancellationToken cancellationToken)
+    {
+        return notificationEventPublisher.PublishPaymentCompletedAsync(
+            new PaymentCompletedEvent(
+                completion.Payment.ReservationId,
+                completion.Payment.Reservation.ClientUserId,
+                completion.Payment.Amount,
+                completion.Payment.Currency,
+                completion.Payment.PayPalOrderId,
+                completion.Payment.CompletedAt!.Value),
+            cancellationToken);
     }
 
     private async Task<Reservation> GetLockedReservationAsync(

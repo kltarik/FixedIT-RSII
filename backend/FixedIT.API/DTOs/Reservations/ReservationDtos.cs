@@ -83,6 +83,7 @@ public sealed record ReservationResponse(
     int DurationMinutes,
     decimal TotalPrice,
     ReservationStatus Status,
+    string StatusName,
     string? CancellationReason,
     bool IsPaid,
     PaymentStatus? PaymentStatus,
@@ -97,7 +98,9 @@ public sealed record ReservationResponse(
 public sealed record ReservationStatusHistoryResponse(
     int Id,
     ReservationStatus? PreviousStatus,
+    string? PreviousStatusName,
     ReservationStatus NewStatus,
+    string NewStatusName,
     string ChangedByUserId,
     string? Reason,
     DateTime ChangedAt);

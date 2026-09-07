@@ -250,7 +250,11 @@ class AdminStats {
     reservationsByStatus: jsonList(json, 'reservationsByStatus')
         .map(
           (item) => NamedCount(
-            reservationStatusName(jsonInt(item, 'status')),
+            jsonString(
+              item,
+              'statusName',
+              reservationStatusName(jsonInt(item, 'status')),
+            ),
             jsonInt(item, 'count'),
           ),
         )
@@ -408,6 +412,7 @@ class ReservationRecord {
     required this.durationMinutes,
     required this.totalPrice,
     required this.status,
+    required this.statusName,
     required this.isPaid,
     this.cancellationReason,
   });
@@ -421,6 +426,7 @@ class ReservationRecord {
   final int durationMinutes;
   final double totalPrice;
   final int status;
+  final String statusName;
   final bool isPaid;
   final String? cancellationReason;
   factory ReservationRecord.fromJson(Json json) => ReservationRecord(
@@ -441,6 +447,11 @@ class ReservationRecord {
     durationMinutes: jsonInt(json, 'durationMinutes'),
     totalPrice: jsonDouble(json, 'totalPrice'),
     status: jsonInt(json, 'status'),
+    statusName: jsonString(
+      json,
+      'statusName',
+      reservationStatusName(jsonInt(json, 'status')),
+    ),
     isPaid: jsonBool(json, 'isPaid'),
     cancellationReason: json['cancellationReason']?.toString(),
   );

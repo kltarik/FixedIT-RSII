@@ -177,6 +177,17 @@ public sealed class ReservationService(
             Type = NotificationType.Reservation
         };
         db.Notifications.Add(notification);
+        await eventPublisher.PublishAsync(
+            new ReservationStatusChangedEvent(
+                reservation.Id,
+                clientUserId,
+                professional.UserId,
+                null,
+                ReservationStatus.Pending,
+                now,
+                clientUserId,
+                null),
+            cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -189,28 +200,6 @@ public sealed class ReservationService(
             logger.LogError(
                 exception,
                 "SignalR notification failed after reservation {ReservationId} was committed.",
-                reservation.Id);
-        }
-
-        try
-        {
-            await eventPublisher.PublishAsync(
-                new ReservationStatusChangedEvent(
-                    reservation.Id,
-                    clientUserId,
-                    professional.UserId,
-                    null,
-                    ReservationStatus.Pending,
-                    now,
-                    clientUserId,
-                    null),
-                cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(
-                exception,
-                "RabbitMQ event failed after reservation {ReservationId} was committed.",
                 reservation.Id);
         }
 

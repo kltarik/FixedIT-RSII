@@ -23,7 +23,5 @@ public interface IReferenceDataService
     Task DeleteCategoryAsync(int id, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<ReservationStatusDefinitionResponse>> GetReservationStatusesAsync(CancellationToken cancellationToken);
-    Task<ReservationStatusDefinitionResponse> CreateReservationStatusAsync(SaveReservationStatusDefinitionRequest request, CancellationToken cancellationToken);
     Task<ReservationStatusDefinitionResponse> UpdateReservationStatusAsync(int id, UpdateReservationStatusDefinitionRequest request, CancellationToken cancellationToken);
-    Task DeleteReservationStatusAsync(int id, CancellationToken cancellationToken);
 }

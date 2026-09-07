@@ -14,10 +14,14 @@ public sealed class ReportService(
     AppDbContext db,
     IPaginationService paginationService,
     IOptions<PayPalOptions> payPalOptions,
-    IOptions<ReportOptions> reportOptions) : IReportService
+    IOptions<ReportOptions> reportOptions,
+    IOptions<SchedulingOptions> schedulingOptions) : IReportService
 {
     private readonly string _currency = payPalOptions.Value.Currency;
     private readonly ReportOptions _reportOptions = reportOptions.Value;
+    private readonly TimeZoneInfo _businessTimeZone = TimeZoneInfo.FindSystemTimeZoneById(
+        schedulingOptions.Value.TimeZoneId);
+    private readonly string _sqlServerTimeZoneId = schedulingOptions.Value.SqlServerTimeZoneId;
 
     public async Task<FinancialReportResponse> GetFinancialReportAsync(
         string userId,
@@ -35,8 +39,12 @@ public sealed class ReportService(
         var monthlyRevenueRows = await query
             .GroupBy(payment => new
             {
-                Year = payment.CompletedAt!.Value.Year,
-                Month = payment.CompletedAt.Value.Month
+                Year = EF.Functions.AtTimeZone(
+                    EF.Functions.AtTimeZone(payment.CompletedAt!.Value, "UTC"),
+                    _sqlServerTimeZoneId).Year,
+                Month = EF.Functions.AtTimeZone(
+                    EF.Functions.AtTimeZone(payment.CompletedAt.Value, "UTC"),
+                    _sqlServerTimeZoneId).Month
             })
             .Select(group => new MonthlyRevenueProjection
             {
@@ -334,18 +342,26 @@ public sealed class ReportService(
             _currency);
     }
 
-    private static ReportDateRange CreateDateRange(ReportFilterRequest filters)
+    private ReportDateRange CreateDateRange(ReportFilterRequest filters)
     {
-        var fromUtc = filters.From?.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var fromUtc = filters.From.HasValue
+            ? ConvertLocalDateToUtc(filters.From.Value)
+            : (DateTime?)null;
         DateTime? toExclusiveUtc = null;
         if (filters.To.HasValue && filters.To.Value != DateOnly.MaxValue)
         {
-            toExclusiveUtc = filters.To.Value
-                .AddDays(1)
-                .ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            toExclusiveUtc = ConvertLocalDateToUtc(filters.To.Value.AddDays(1));
         }
 
         return new ReportDateRange(fromUtc, toExclusiveUtc);
+    }
+
+    private DateTime ConvertLocalDateToUtc(DateOnly date)
+    {
+        var localMidnight = DateTime.SpecifyKind(
+            date.ToDateTime(TimeOnly.MinValue),
+            DateTimeKind.Unspecified);
+        return TimeZoneInfo.ConvertTimeToUtc(localMidnight, _businessTimeZone);
     }
 
     private sealed record ReportDateRange(DateTime? FromUtc, DateTime? ToExclusiveUtc);

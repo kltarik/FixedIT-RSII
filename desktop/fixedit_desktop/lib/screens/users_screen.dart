@@ -116,52 +116,64 @@ class _UsersScreenState extends State<UsersScreen> {
   }
 
   Future<void> _edit(AdminUserRecord user) async {
-    final cities = await widget.repository.getCities();
+    final cities = await widget.repository.getAllCities();
     if (!mounted || cities.items.isEmpty) return;
     final firstName = TextEditingController(text: user.firstName);
     final lastName = TextEditingController(text: user.lastName);
     final phone = TextEditingController(text: user.phoneNumber);
+    final formKey = GlobalKey<FormState>();
     var cityId = user.cityId;
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('Uredi korisnika'),
-          content: SizedBox(
-            width: 460,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: firstName,
-                  decoration: const InputDecoration(labelText: 'Ime'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: lastName,
-                  decoration: const InputDecoration(labelText: 'Prezime'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: phone,
-                  decoration: const InputDecoration(labelText: 'Telefon'),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<int>(
-                  initialValue: cityId,
-                  decoration: const InputDecoration(labelText: 'Grad'),
-                  items: cities.items
-                      .map(
-                        (city) => DropdownMenuItem(
-                          value: city.id,
-                          child: Text(city.name),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) =>
-                      setDialogState(() => cityId = value ?? cityId),
-                ),
-              ],
+          content: Form(
+            key: formKey,
+            child: SizedBox(
+              width: 460,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: firstName,
+                    decoration: const InputDecoration(labelText: 'Ime'),
+                    validator: (value) => _requiredName(value, 'Ime'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: lastName,
+                    decoration: const InputDecoration(labelText: 'Prezime'),
+                    validator: (value) => _requiredName(value, 'Prezime'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: phone,
+                    decoration: const InputDecoration(
+                      labelText: 'Telefon',
+                      helperText: 'Primjer: +387 61 123 456',
+                    ),
+                    validator: _optionalPhone,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    initialValue: cityId,
+                    decoration: const InputDecoration(labelText: 'Grad'),
+                    items: cities.items
+                        .map(
+                          (city) => DropdownMenuItem(
+                            value: city.id,
+                            child: Text(city.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) =>
+                        setDialogState(() => cityId = value ?? cityId),
+                    validator: (value) =>
+                        value == null ? 'Odaberite grad.' : null,
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
@@ -171,6 +183,7 @@ class _UsersScreenState extends State<UsersScreen> {
             ),
             FilledButton(
               onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
                 try {
                   await widget.repository.updateUser(
                     id: user.id,
@@ -312,4 +325,19 @@ class _UsersScreenState extends State<UsersScreen> {
       ],
     );
   }
+}
+
+String? _requiredName(String? value, String label) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) return '$label je obavezno polje.';
+  if (text.length > 100) return '$label može imati najviše 100 znakova.';
+  return null;
+}
+
+String? _optionalPhone(String? value) {
+  final phone = value?.trim() ?? '';
+  if (phone.isEmpty) return null;
+  return RegExp(r'^\+?[0-9][0-9 ()-]{6,19}$').hasMatch(phone)
+      ? null
+      : 'Unesite broj u formatu +387 61 123 456.';
 }

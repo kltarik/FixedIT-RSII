@@ -28,8 +28,8 @@ class _JobsScreenState extends State<JobsScreen> {
 
   Future<void> _initialize() async {
     try {
-      final cities = await widget.repository.getCities();
-      final categories = await widget.repository.getCategories();
+      final cities = await widget.repository.getAllCities();
+      final categories = await widget.repository.getAllCategories();
       if (mounted) {
         setState(() {
           _cities = cities.items;

@@ -21,6 +21,13 @@ class MobileRepository {
     return ReferenceData.fromJson(r.data ?? const {});
   }
 
+  Future<ReferenceData> getRegistrationReferenceData() async {
+    final r = await api.call<Json>(
+      () => api.dio.get<Json>('/api/auth/register/options'),
+    );
+    return ReferenceData.fromJson(r.data ?? const {});
+  }
+
   Future<HomeData> getHome({required bool client}) async {
     final calls = <Future<Object>>[
       client ? getRecommendations() : getProfessionals(pageSize: 8),
@@ -154,11 +161,21 @@ class MobileRepository {
     );
   }
 
-  Future<Paged<JobOffer>> getOffers(int jobId) async {
+  Future<Paged<JobOffer>> getOffers(int jobId, {int page = 1}) async {
     final r = await api.call<Json>(
       () => api.dio.get<Json>(
         '/api/jobs/$jobId/offers',
-        queryParameters: const {'page': 1, 'pageSize': 50},
+        queryParameters: {'page': page, 'pageSize': 20},
+      ),
+    );
+    return Paged.fromJson(r.data ?? const {}, JobOffer.fromJson);
+  }
+
+  Future<Paged<JobOffer>> getMyOffers({int page = 1}) async {
+    final r = await api.call<Json>(
+      () => api.dio.get<Json>(
+        '/api/offers/my',
+        queryParameters: {'page': page, 'pageSize': 20},
       ),
     );
     return Paged.fromJson(r.data ?? const {}, JobOffer.fromJson);
@@ -437,14 +454,21 @@ class MobileRepository {
     );
   }
 
-  Future<Paged<NotificationItem>> getNotifications() async {
+  Future<Paged<NotificationItem>> getNotifications({int page = 1}) async {
     final r = await api.call<Json>(
       () => api.dio.get<Json>(
         '/api/notifications',
-        queryParameters: const {'page': 1, 'pageSize': 50},
+        queryParameters: {'page': page, 'pageSize': 20},
       ),
     );
     return Paged.fromJson(r.data ?? const {}, NotificationItem.fromJson);
+  }
+
+  Future<int> getUnreadNotificationCount() async {
+    final r = await api.call<int>(
+      () => api.dio.get<int>('/api/notifications/unread-count'),
+    );
+    return r.data ?? 0;
   }
 
   Future<void> markNotificationRead(int id) async {

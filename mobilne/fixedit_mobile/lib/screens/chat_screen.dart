@@ -101,9 +101,26 @@ class _ChatBodyState extends State<_ChatBody> {
                 )
               : ListView.builder(
                   padding: const EdgeInsets.all(14),
-                  itemCount: chat.messages.length,
+                  itemCount: chat.messages.length + (chat.canLoadOlder ? 1 : 0),
                   itemBuilder: (_, i) {
-                    final item = chat.messages[i];
+                    if (chat.canLoadOlder && i == 0) {
+                      return Center(
+                        child: TextButton.icon(
+                          onPressed: chat.loadingOlder ? null : chat.loadOlder,
+                          icon: chat.loadingOlder
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.history),
+                          label: const Text('Učitaj starije poruke'),
+                        ),
+                      );
+                    }
+                    final messageIndex = chat.canLoadOlder ? i - 1 : i;
+                    final item = chat.messages[messageIndex];
                     final mine = item.senderId == chat.currentUserId;
                     return Align(
                       alignment: mine

@@ -218,9 +218,11 @@ class _PasswordResetDialog extends StatefulWidget {
 }
 
 class _PasswordResetDialogState extends State<_PasswordResetDialog> {
+  final key = GlobalKey<FormState>();
   final email = TextEditingController();
   final code = TextEditingController();
   final password = TextEditingController();
+  final confirmation = TextEditingController();
   bool codeSent = false;
   bool busy = false;
   String? message;
@@ -230,10 +232,12 @@ class _PasswordResetDialogState extends State<_PasswordResetDialog> {
     email.dispose();
     code.dispose();
     password.dispose();
+    confirmation.dispose();
     super.dispose();
   }
 
   Future<void> submit() async {
+    if (!key.currentState!.validate()) return;
     setState(() => busy = true);
     try {
       final auth = context.read<AuthService>();
@@ -267,33 +271,62 @@ class _PasswordResetDialogState extends State<_PasswordResetDialog> {
     title: const Text('Promjena lozinke'),
     content: SizedBox(
       width: 420,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: email,
-            enabled: !codeSent,
-            onChanged: (_) => setState(() {}),
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(labelText: 'Email'),
-          ),
-          if (codeSent) ...[
-            const SizedBox(height: 12),
-            TextField(
-              controller: code,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              decoration: const InputDecoration(labelText: 'Kod iz emaila'),
+      child: Form(
+        key: key,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: email,
+              enabled: !codeSent,
+              onChanged: (_) => setState(() {}),
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(labelText: 'Email'),
+              validator: _emailValidator,
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: password,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Nova lozinka'),
-            ),
+            if (codeSent) ...[
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: code,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                decoration: const InputDecoration(
+                  labelText: 'Kod iz emaila',
+                  helperText: 'Unesite tačno 6 cifara iz primljene poruke.',
+                ),
+                validator: (value) => RegExp(r'^\d{6}$').hasMatch(value ?? '')
+                    ? null
+                    : 'Kod mora sadržavati tačno 6 cifara.',
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: password,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Nova lozinka',
+                  helperText:
+                      'Najmanje 8 znakova, veliko i malo slovo, broj i poseban znak.',
+                ),
+                validator: _passwordValidator,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: confirmation,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Potvrda nove lozinke',
+                ),
+                validator: (value) => value == password.text
+                    ? null
+                    : 'Potvrda lozinke se ne podudara.',
+              ),
+            ],
+            if (message != null) ...[
+              const SizedBox(height: 12),
+              Text(message!),
+            ],
           ],
-          if (message != null) ...[const SizedBox(height: 12), Text(message!)],
-        ],
+        ),
       ),
     ),
     actions: [
@@ -327,7 +360,7 @@ class _RegisterFormState extends State<_RegisterForm> {
   @override
   void initState() {
     super.initState();
-    reference = context.read<MobileRepository>().getReferenceData();
+    reference = context.read<MobileRepository>().getRegistrationReferenceData();
   }
 
   @override
@@ -464,6 +497,20 @@ String? _emailValidator(String? value) {
   if (email.isEmpty) return 'Email je obavezan.';
   if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
     return 'Email nije ispravan.';
+  }
+  return null;
+}
+
+String? _passwordValidator(String? value) {
+  final password = value ?? '';
+  if (password.length < 8) {
+    return 'Lozinka mora imati najmanje 8 znakova.';
+  }
+  if (!RegExp(r'[A-Z]').hasMatch(password) ||
+      !RegExp(r'[a-z]').hasMatch(password) ||
+      !RegExp(r'\d').hasMatch(password) ||
+      !RegExp(r'[^A-Za-z0-9]').hasMatch(password)) {
+    return 'Dodajte veliko i malo slovo, broj i poseban znak.';
   }
   return null;
 }

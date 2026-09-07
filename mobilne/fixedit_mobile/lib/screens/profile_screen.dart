@@ -104,6 +104,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {});
       return;
     }
+    final parsedRate = widget.professional
+        ? double.parse(rate.text.replaceAll(',', '.'))
+        : null;
     setState(() => saving = true);
     try {
       await widget.repository.updateProfile(
@@ -116,7 +119,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (widget.professional) {
         await widget.repository.updateProfessional(
           bio: bio.text,
-          rate: double.parse(rate.text),
+          rate: parsedRate!,
           experience: int.parse(experience.text),
           categoryIds: categories.toList(),
         );

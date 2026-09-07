@@ -30,9 +30,27 @@ class NotificationsScreen extends StatelessWidget {
               )
             : ListView.separated(
                 padding: const EdgeInsets.all(14),
-                itemCount: service.items.length,
+                itemCount: service.items.length + (service.canLoadMore ? 1 : 0),
                 separatorBuilder: (_, _) => const Divider(),
                 itemBuilder: (_, index) {
+                  if (index == service.items.length) {
+                    return Center(
+                      child: TextButton.icon(
+                        onPressed: service.loadingMore
+                            ? null
+                            : service.loadMore,
+                        icon: service.loadingMore
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.expand_more),
+                        label: const Text('Učitaj starije obavijesti'),
+                      ),
+                    );
+                  }
                   final item = service.items[index];
                   return ListTile(
                     onTap: item.isRead ? null : () => service.markRead(item),

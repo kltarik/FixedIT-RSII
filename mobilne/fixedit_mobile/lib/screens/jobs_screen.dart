@@ -18,6 +18,7 @@ class JobsScreen extends StatefulWidget {
 
 class _JobsScreenState extends State<JobsScreen> {
   Paged<JobPosting>? result;
+  Paged<JobOffer>? myOffers;
   String? error;
   bool mine = false;
   @override
@@ -26,13 +27,20 @@ class _JobsScreenState extends State<JobsScreen> {
     load();
   }
 
-  Future<void> load() async {
+  Future<void> load([int page = 1]) async {
     setState(() {
       result = null;
+      myOffers = null;
       error = null;
     });
     try {
+      if (!widget.client && mine) {
+        final value = await widget.repository.getMyOffers(page: page);
+        if (mounted) setState(() => myOffers = value);
+        return;
+      }
       final value = await widget.repository.getJobs(
+        page: page,
         mine: widget.client && mine,
       );
       if (mounted) setState(() => result = value);
@@ -62,23 +70,24 @@ class _JobsScreenState extends State<JobsScreen> {
                       )
                     : null,
               ),
-              if (widget.client)
-                SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(value: false, label: Text('Svi')),
-                    ButtonSegment(value: true, label: Text('Moji')),
-                  ],
-                  selected: {mine},
-                  onSelectionChanged: (v) {
-                    setState(() => mine = v.first);
-                    load();
-                  },
-                ),
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(value: false, label: Text('Svi')),
+                  ButtonSegment(value: true, label: Text('Moje')),
+                ],
+                selected: {mine},
+                onSelectionChanged: (v) {
+                  setState(() => mine = v.first);
+                  load();
+                },
+              ),
             ],
           ),
         ),
         Expanded(
-          child: result == null
+          child: !widget.client && mine
+              ? _buildMyOffers()
+              : result == null
               ? const LoadingView()
               : result!.items.isEmpty
               ? const EmptyView('Nema oglasa.')
@@ -86,8 +95,15 @@ class _JobsScreenState extends State<JobsScreen> {
                   onRefresh: load,
                   child: ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
-                    itemCount: result!.items.length,
+                    itemCount: result!.items.length + 1,
                     itemBuilder: (_, i) {
+                      if (i == result!.items.length) {
+                        return PageControls(
+                          page: result!.page,
+                          pageCount: result!.pageCount,
+                          onPageChanged: load,
+                        );
+                      }
                       final job = result!.items[i];
                       return Card(
                         child: InkWell(
@@ -138,6 +154,37 @@ class _JobsScreenState extends State<JobsScreen> {
                     },
                   ),
                 ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMyOffers() {
+    if (myOffers == null) return const LoadingView();
+    if (myOffers!.items.isEmpty) {
+      return const EmptyView('Još niste poslali nijednu ponudu.');
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
+      children: [
+        ...myOffers!.items.map(
+          (offer) => Card(
+            child: ListTile(
+              leading: CircleAvatar(child: Text('#${offer.jobId}')),
+              title: Text('Ponuda za oglas #${offer.jobId}'),
+              subtitle: Text(
+                '${offer.message}\n${money.format(offer.price)} EUR',
+              ),
+              isThreeLine: true,
+              trailing: Chip(label: Text(offer.statusName)),
+            ),
+          ),
+        ),
+        PageControls(
+          page: myOffers!.page,
+          pageCount: myOffers!.pageCount,
+          onPageChanged: load,
         ),
       ],
     );
@@ -361,9 +408,12 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     if (widget.owner) loadOffers();
   }
 
-  Future<void> loadOffers() async {
+  Future<void> loadOffers([int page = 1]) async {
     try {
-      final value = await widget.repository.getOffers(widget.job.id);
+      final value = await widget.repository.getOffers(
+        widget.job.id,
+        page: page,
+      );
       if (mounted) setState(() => offers = value);
     } catch (e) {
       if (mounted) setState(() => error = userError(e));
@@ -461,6 +511,12 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                       : Text(offer.status == 2 ? 'Prihvaćena' : 'Odbijena'),
                 ),
               ),
+            ),
+          if (offers != null)
+            PageControls(
+              page: offers!.page,
+              pageCount: offers!.pageCount,
+              onPageChanged: loadOffers,
             ),
         ],
         const SizedBox(height: 80),

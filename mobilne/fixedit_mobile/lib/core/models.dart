@@ -264,6 +264,7 @@ class JobOffer {
     required this.message,
     required this.price,
     required this.status,
+    required this.statusName,
     required this.rating,
   });
   final int id;
@@ -276,6 +277,7 @@ class JobOffer {
   final String message;
   final double price;
   final int status;
+  final String statusName;
   final double rating;
   factory JobOffer.fromJson(Json j) => JobOffer(
     id: jInt(j, 'id'),
@@ -290,6 +292,7 @@ class JobOffer {
     message: jString(j, 'message'),
     price: jDouble(j, 'proposedPrice'),
     status: jInt(j, 'status'),
+    statusName: jString(j, 'statusName', reservationStatus(jInt(j, 'status'))),
     rating: jDouble(j, 'professionalAverageRating'),
   );
 }
@@ -336,6 +339,7 @@ class Reservation {
     required this.duration,
     required this.price,
     required this.status,
+    required this.statusName,
     required this.isPaid,
     this.paymentStatus,
     this.reviewId,
@@ -360,6 +364,7 @@ class Reservation {
   final int duration;
   final double price;
   final int status;
+  final String statusName;
   final bool isPaid;
   final int? paymentStatus;
   final int? reviewId;
@@ -391,6 +396,7 @@ class Reservation {
     duration: jInt(j, 'durationMinutes'),
     price: jDouble(j, 'totalPrice'),
     status: jInt(j, 'status'),
+    statusName: jString(j, 'statusName', reservationStatus(jInt(j, 'status'))),
     isPaid: jBool(j, 'isPaid'),
     paymentStatus: (j['paymentStatus'] as num?)?.toInt(),
     reviewId: (j['reviewId'] as num?)?.toInt(),
@@ -410,18 +416,28 @@ class Reservation {
 class ReservationStatusHistory {
   const ReservationStatusHistory({
     required this.newStatus,
+    required this.newStatusName,
     required this.changedAt,
     this.previousStatus,
+    this.previousStatusName,
     this.reason,
   });
   final int? previousStatus;
+  final String? previousStatusName;
   final int newStatus;
+  final String newStatusName;
   final String? reason;
   final DateTime changedAt;
   factory ReservationStatusHistory.fromJson(Json json) =>
       ReservationStatusHistory(
         previousStatus: (json['previousStatus'] as num?)?.toInt(),
+        previousStatusName: json['previousStatusName']?.toString(),
         newStatus: jInt(json, 'newStatus'),
+        newStatusName: jString(
+          json,
+          'newStatusName',
+          reservationStatus(jInt(json, 'newStatus')),
+        ),
         reason: json['reason']?.toString(),
         changedAt: jDate(json, 'changedAt'),
       );

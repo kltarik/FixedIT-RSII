@@ -78,10 +78,12 @@ koji nije isti nalog kao **Business** sandbox merchant povezan s vrijednostima
 `PAYPAL_CLIENT_ID` i `PAYPAL_CLIENT_SECRET`. Korištenje merchant naloga kao
 kupca PayPal odbija porukom `COMPLIANCE_VIOLATION`.
 
-Podaci za FixedIT testne korisnike iz naredne tabele nisu PayPal podaci. Email i
-lozinku Personal sandbox kupca pronaći u PayPal Developer Dashboardu pod
-`Testing Tools > Sandbox Accounts > Personal account > View/Edit Account`.
-Business sandbox nalog predstavlja prodavca, a Personal sandbox nalog kupca.
+Podaci za FixedIT testne korisnike iz naredne tabele nisu PayPal podaci. Za
+plaćanje se koristi Personal sandbox kupac `fixedit_klijenti@personal.example.com`.
+Njegova lozinka nalazi se u šifrovanoj `.env-tajne.zip` arhivi kao
+`PAYPAL_TEST_BUYER_PASSWORD`, dok je email zapisan kao
+`PAYPAL_TEST_BUYER_EMAIL`. Business sandbox nalog predstavlja prodavca, a
+Personal sandbox nalog kupca.
 Detaljne PayPal upute dostupne su u [Sandbox accounts dokumentaciji](https://developer.paypal.com/sandbox-testing/accounts/).
 
 Nakon što klijent odobri plaćanje u ugrađenom PayPal prozoru, aplikacija

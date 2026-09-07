@@ -6,7 +6,9 @@ Sistem rangira verifikovane profesionalce za prijavljenog klijenta. Cilj je da k
 
 ## 2. Algoritam
 
-Implementiran je ML.NET `MatrixFactorizationTrainer`. `UserId` i `ProfessionalProfileId` mapiraju se u key kolone, a vrijednost interakcije koristi se kao `Label`. Parametri modela (`Seed`, `NumberOfIterations`, `ApproximationRank`, `MinimumTrainingRatings`, `RetrainingIntervalHours` i `CandidatePoolSize`) dolaze iz konfiguracijske sekcije `Recommendations`.
+Implementiran je ML.NET `MatrixFactorizationTrainer`. `UserId` i `ProfessionalProfileId` mapiraju se u key kolone, a vrijednost interakcije koristi se kao `Label`. Parametri modela (`Seed`, `NumberOfIterations`, `ApproximationRank`, `LearningRate`, `MinimumTrainingRatings`, `RetrainingIntervalHours` i `CandidatePoolSize`) dolaze iz konfiguracijske sekcije `Recommendations`.
+
+Prije treninga svi signali za isti par korisnik-profesionalac sabiraju se u jednu vrijednost matrične ćelije. Zadana konfiguracija koristi 30 iteracija i 20 latentnih dimenzija.
 
 ## 3. Ulazni podaci i težine
 

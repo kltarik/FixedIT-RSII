@@ -56,6 +56,29 @@ builder.Services
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services
+    .AddOptions<SchedulingOptions>()
+    .Bind(builder.Configuration.GetSection(SchedulingOptions.SectionName))
+    .ValidateDataAnnotations()
+    .Validate(
+        options =>
+        {
+            try
+            {
+                _ = TimeZoneInfo.FindSystemTimeZoneById(options.TimeZoneId);
+                return true;
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                return false;
+            }
+            catch (InvalidTimeZoneException)
+            {
+                return false;
+            }
+        },
+        "Scheduling:TimeZoneId mora biti važeća vremenska zona.")
+    .ValidateOnStart();
+builder.Services
     .AddOptions<PaginationOptions>()
     .Bind(builder.Configuration.GetSection(PaginationOptions.SectionName))
     .ValidateDataAnnotations()
@@ -240,14 +263,27 @@ builder.Services
 
                 var db = context.HttpContext.RequestServices
                     .GetRequiredService<AppDbContext>();
-                var isActive = await db.Users
+                var userState = await db.Users
                     .IgnoreQueryFilters()
-                    .AnyAsync(
-                        user => user.Id == userId && user.IsActive,
+                    .Where(user => user.Id == userId)
+                    .Select(user => new { user.IsActive, user.SecurityStamp })
+                    .SingleOrDefaultAsync(
                         context.HttpContext.RequestAborted);
-                if (!isActive)
+                if (userState is null || !userState.IsActive)
                 {
                     context.Fail("Korisnički nalog je deaktiviran.");
+                    return;
+                }
+
+                var tokenSecurityStamp = context.Principal?.FindFirstValue(
+                    AuthenticationConstants.SecurityStampClaimType);
+                if (string.IsNullOrWhiteSpace(tokenSecurityStamp)
+                    || !string.Equals(
+                        tokenSecurityStamp,
+                        userState.SecurityStamp,
+                        StringComparison.Ordinal))
+                {
+                    context.Fail("Prijava više nije važeća.");
                 }
             }
         };

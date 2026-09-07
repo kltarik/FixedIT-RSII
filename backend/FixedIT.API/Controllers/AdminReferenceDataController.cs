@@ -108,10 +108,30 @@ public sealed class AdminReferenceDataController(IReferenceDataService reference
         CancellationToken cancellationToken) =>
         Ok(await referenceDataService.GetReservationStatusesAsync(cancellationToken));
 
+    [HttpPost("reservation-statuses")]
+    public async Task<ActionResult<ReservationStatusDefinitionResponse>> CreateReservationStatus(
+        SaveReservationStatusDefinitionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var status = await referenceDataService.CreateReservationStatusAsync(
+            request,
+            cancellationToken);
+        return Created($"api/admin/reference-data/reservation-statuses/{status.Id}", status);
+    }
+
     [HttpPut("reservation-statuses/{id:int}")]
     public async Task<ActionResult<ReservationStatusDefinitionResponse>> UpdateReservationStatus(
         int id,
         UpdateReservationStatusDefinitionRequest request,
         CancellationToken cancellationToken) =>
         Ok(await referenceDataService.UpdateReservationStatusAsync(id, request, cancellationToken));
+
+    [HttpDelete("reservation-statuses/{id:int}")]
+    public async Task<IActionResult> DeleteReservationStatus(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        await referenceDataService.DeleteReservationStatusAsync(id, cancellationToken);
+        return NoContent();
+    }
 }

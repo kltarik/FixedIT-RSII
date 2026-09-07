@@ -193,6 +193,26 @@ class AdminRepository {
     return ReservationStatusRecord.fromJson(response.data ?? const {});
   }
 
+  Future<ReservationStatusRecord> createReservationStatus({
+    required int id,
+    required String name,
+    required String description,
+  }) async {
+    final response = await api.request<Json>(
+      () => api.dio.post<Json>(
+        '/api/admin/reference-data/reservation-statuses',
+        data: {'id': id, 'name': name, 'description': description},
+      ),
+    );
+    return ReservationStatusRecord.fromJson(response.data ?? const {});
+  }
+
+  Future<void> deleteReservationStatus(int id) => api.request<void>(
+    () => api.dio.delete<void>(
+      '/api/admin/reference-data/reservation-statuses/$id',
+    ),
+  );
+
   Future<PagedResult<AdminReviewRecord>> getReviews({
     int page = 1,
     int? rating,
@@ -355,11 +375,23 @@ class AdminRepository {
   Future<PagedResult<ReservationRecord>> getReservations({
     int page = 1,
     int? status,
+    int? categoryId,
+    int? cityId,
+    DateTime? from,
+    DateTime? to,
   }) async {
     final response = await api.request<Json>(
       () => api.dio.get<Json>(
         '/api/admin/reservations',
-        queryParameters: {'page': page, 'pageSize': 20, 'status': ?status},
+        queryParameters: {
+          'page': page,
+          'pageSize': 20,
+          'status': ?status,
+          'categoryId': ?categoryId,
+          'cityId': ?cityId,
+          if (from != null) 'from': _dateOnly(from),
+          if (to != null) 'to': _dateOnly(to),
+        },
       ),
     );
     return PagedResult.fromJson(

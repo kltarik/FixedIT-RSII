@@ -213,7 +213,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           TextFormField(
             controller: phone,
             keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(labelText: 'Telefon'),
+            decoration: const InputDecoration(
+              labelText: 'Telefon',
+              hintText: '+387 61 123 456',
+            ),
+            validator: (value) {
+              final normalized = value?.trim() ?? '';
+              if (normalized.isEmpty) return null;
+              return RegExp(r'^\+?[0-9][0-9\s()/-]{5,19}$').hasMatch(normalized)
+                  ? null
+                  : 'Unesite telefon u formatu +387 61 123 456.';
+            },
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<int>(
@@ -259,9 +269,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             controller: rate,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(labelText: 'Satnica (EUR)'),
-            validator: (value) => (double.tryParse(value ?? '') ?? -1) < 0
-                ? 'Neispravna satnica.'
-                : null,
+            validator: (value) {
+              final amount = double.tryParse(
+                (value ?? '').replaceAll(',', '.'),
+              );
+              return amount == null || amount <= 0 || amount > 1000000
+                  ? 'Satnica mora biti između 0,01 i 1.000.000 EUR.'
+                  : null;
+            },
           ),
         ),
         const SizedBox(width: 8),

@@ -52,14 +52,7 @@ Lokalna konfiguracija:
 & "C:\Program Files\7-Zip\7z.exe" e .env-tajne.zip -o. -p<šifra>
 ```
 
-`.env-tajne.zip` nalazi se u root direktoriju repozitorija i sadrži sve potrebne vrijednosti. `.env` se ne commituje. Referentni opis svih varijabli nalazi se u `.env.example`. Za direktno pokretanje iz .NET CLI-ja kopiraju se primjeri konfiguracije:
-
-```powershell
-Copy-Item backend/FixedIT.API/appsettings.json.example backend/FixedIT.API/appsettings.json
-Copy-Item backend/FixedIT.NotificationService/appsettings.json.example backend/FixedIT.NotificationService/appsettings.json
-```
-
-`appsettings.json` fajlovi se ne commitaju. Flutter klijenti dobijaju API adresu isključivo kroz `--dart-define=API_BASE_URL=...`.
+`.env-tajne.zip` nalazi se u root direktoriju repozitorija i sadrži sve potrebne vrijednosti. `.env` se ne commituje, a referentni opis svih varijabli nalazi se u `.env.example`. Operativna konfiguracija se centralno prosljeđuje servisima iz `.env` kroz Docker Compose; `appsettings.json.example` fajlovi namjerno ne sadrže runtime vrijednosti. Flutter klijenti dobijaju API adresu isključivo kroz `--dart-define=API_BASE_URL=...`.
 
 ## 4. Pokretanje sistema
 
@@ -265,7 +258,7 @@ SignalR endpointi su `/hubs/chat` i `/hubs/notifications`. Chat hub izlaže `Joi
 
 ## 8. Sistem preporuke
 
-ML.NET koristi `MatrixFactorizationTrainer`. Ulaz su trojke korisnik-profesionalac-signal: rezervacija koja nije otkazana ima težinu 5, pregled profila 2, a pretraga kategorije 1. Korisnički i profesionalni identifikatori pretvaraju se u key kolone. Zadane vrijednosti su 20 iteracija, rank 100, seed 42 i najmanje 5 signala.
+ML.NET koristi `MatrixFactorizationTrainer`. Ulaz su trojke korisnik-profesionalac-signal: rezervacija koja nije otkazana ima težinu 5, pregled profila 2, a pretraga kategorije 1. Ponavljani signali se sabiraju po paru korisnik-profesionalac prije treninga, pa svaka ćelija matrice ima jednu agregiranu vrijednost. Korisnički i profesionalni identifikatori pretvaraju se u key kolone. Zadane vrijednosti su 30 iteracija, rank 20, seed 42 i najmanje 5 signala.
 
 `ModelRetrainingService` je `BackgroundService`. Model trenira pri pokretanju i zatim svakih 24 sata, koristeći novi scoped `AppDbContext`. API razmatra samo verifikovane profesionalce, koristi predikciju za poznate korisnike/profesionalce, a cold-start rang računa iz prosječne ocjene i broja završenih rezervacija. Svaki rezultat sadrži konkretno objašnjenje zasnovano na prethodnoj rezervaciji, pregledu profila, interesu za kategoriju ili javnoj reputaciji.
 

@@ -39,10 +39,30 @@ public sealed class AdminReservationStatusRequest
     public string? CancellationReason { get; set; }
 }
 
-public sealed class AdminReservationFilterRequest
+public sealed class AdminReservationFilterRequest : IValidatableObject
 {
     [EnumDataType(typeof(ReservationStatus))]
     public ReservationStatus? Status { get; init; }
+
+    [Range(1, int.MaxValue)]
+    public int? CategoryId { get; init; }
+
+    [Range(1, int.MaxValue)]
+    public int? CityId { get; init; }
+
+    public DateOnly? From { get; init; }
+
+    public DateOnly? To { get; init; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (From.HasValue && To.HasValue && From.Value > To.Value)
+        {
+            yield return new ValidationResult(
+                "Početni datum ne može biti nakon završnog datuma.",
+                [nameof(From), nameof(To)]);
+        }
+    }
 }
 
 public sealed record ReservationResponse(

@@ -1,4 +1,5 @@
 using System.Data;
+using FixedIT.API.Configuration;
 using FixedIT.API.CustomExceptions;
 using FixedIT.API.Data;
 using FixedIT.API.DTOs.Common;
@@ -6,6 +7,7 @@ using FixedIT.API.DTOs.Reservations;
 using FixedIT.API.Models;
 using FixedIT.API.Models.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace FixedIT.API.Services;
 
@@ -15,10 +17,13 @@ public sealed class ReservationService(
     IHttpContextAccessor httpContextAccessor,
     IReservationEventPublisher eventPublisher,
     INotificationService notificationService,
+    IOptions<SchedulingOptions> schedulingOptions,
     ILogger<ReservationService> logger) : IReservationService
 {
     private const string LockedProfessionalProfilesSql =
         "SELECT * FROM [ProfessionalProfiles] WITH (UPDLOCK, HOLDLOCK)";
+    private readonly TimeZoneInfo _businessTimeZone = TimeZoneInfo.FindSystemTimeZoneById(
+        schedulingOptions.Value.TimeZoneId);
 
     public async Task<ReservationResponse> CreateAsync(
         string clientUserId,
@@ -77,12 +82,18 @@ public sealed class ReservationService(
             throw new BusinessException("Profesionalac ne pruža usluge iz odabrane kategorije.");
         }
 
-        var startTime = TimeOnly.FromDateTime(request.ScheduledAt);
-        var endTime = TimeOnly.FromDateTime(scheduledEnd);
-        var isWithinAvailability = request.ScheduledAt.Date == scheduledEnd.Date
+        var localScheduledAt = TimeZoneInfo.ConvertTimeFromUtc(
+            request.ScheduledAt,
+            _businessTimeZone);
+        var localScheduledEnd = TimeZoneInfo.ConvertTimeFromUtc(
+            scheduledEnd,
+            _businessTimeZone);
+        var startTime = TimeOnly.FromDateTime(localScheduledAt);
+        var endTime = TimeOnly.FromDateTime(localScheduledEnd);
+        var isWithinAvailability = localScheduledAt.Date == localScheduledEnd.Date
             && await db.ProfessionalAvailabilities.AnyAsync(
                 item => item.ProfessionalProfileId == professional.Id
-                    && item.DayOfWeek == request.ScheduledAt.DayOfWeek
+                    && item.DayOfWeek == localScheduledAt.DayOfWeek
                     && item.StartTime <= startTime
                     && item.EndTime >= endTime,
                 cancellationToken);
@@ -160,7 +171,7 @@ public sealed class ReservationService(
         {
             UserId = professional.UserId,
             Title = "Nova rezervacija",
-            Body = $"Zakazana je nova rezervacija za {request.ScheduledAt:dd.MM.yyyy HH:mm}.",
+            Body = $"Zakazana je nova rezervacija za {localScheduledAt:dd.MM.yyyy HH:mm}.",
             IsRead = false,
             CreatedAt = now,
             Type = NotificationType.Reservation
@@ -246,6 +257,31 @@ public sealed class ReservationService(
             query = query.Where(reservation => reservation.Status == filters.Status.Value);
         }
 
+        if (filters.CategoryId.HasValue)
+        {
+            query = query.Where(reservation => reservation.CategoryId == filters.CategoryId.Value);
+        }
+
+        if (filters.CityId.HasValue)
+        {
+            query = query.Where(reservation =>
+                reservation.ProfessionalProfile.User.CityId == filters.CityId.Value);
+        }
+
+        if (filters.From.HasValue)
+        {
+            var fromUtc = ConvertLocalToUtc(filters.From.Value, TimeOnly.MinValue);
+            query = query.Where(reservation => reservation.ScheduledAt >= fromUtc);
+        }
+
+        if (filters.To.HasValue)
+        {
+            var toExclusiveUtc = ConvertLocalToUtc(
+                filters.To.Value.AddDays(1),
+                TimeOnly.MinValue);
+            query = query.Where(reservation => reservation.ScheduledAt < toExclusiveUtc);
+        }
+
         return GetPageAsync(query, request, cancellationToken);
     }
 
@@ -254,11 +290,12 @@ public sealed class ReservationService(
         AvailableSlotsRequest request,
         CancellationToken cancellationToken)
     {
-        var dateStart = DateTime.SpecifyKind(
-            request.Date.ToDateTime(TimeOnly.MinValue),
-            DateTimeKind.Utc);
-        if (dateStart.Date < DateTime.UtcNow.Date
-            || dateStart.Date > DateTime.UtcNow.Date.AddYears(1))
+        var now = DateTime.UtcNow;
+        var localToday = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(
+            now,
+            _businessTimeZone));
+        if (request.Date < localToday
+            || request.Date > localToday.AddYears(1))
         {
             throw new BusinessException("Datum termina mora biti unutar narednih godinu dana.");
         }
@@ -277,18 +314,19 @@ public sealed class ReservationService(
         var periods = await db.ProfessionalAvailabilities
             .AsNoTracking()
             .Where(item => item.ProfessionalProfileId == professionalProfileId
-                && item.DayOfWeek == dateStart.DayOfWeek)
+                && item.DayOfWeek == request.Date.DayOfWeek)
             .OrderBy(item => item.StartTime)
             .Select(item => new { item.StartTime, item.EndTime })
             .ToArrayAsync(cancellationToken);
-        var dateEnd = dateStart.AddDays(1);
+        var dateStartUtc = ConvertLocalToUtc(request.Date, TimeOnly.MinValue);
+        var dateEndUtc = ConvertLocalToUtc(request.Date.AddDays(1), TimeOnly.MinValue);
         var reservations = await db.Reservations
             .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(item => item.ProfessionalProfileId == professionalProfileId
                 && item.Status != ReservationStatus.Cancelled
-                && item.ScheduledAt >= dateStart
-                && item.ScheduledAt < dateEnd)
+                && item.ScheduledAt >= dateStartUtc
+                && item.ScheduledAt < dateEndUtc)
             .Select(item => new
             {
                 Start = item.ScheduledAt,
@@ -296,23 +334,20 @@ public sealed class ReservationService(
             })
             .ToArrayAsync(cancellationToken);
 
-        var now = DateTime.UtcNow;
         var slots = new List<AvailableSlotResponse>();
         foreach (var period in periods)
         {
-            var cursor = DateTime.SpecifyKind(
-                request.Date.ToDateTime(period.StartTime),
-                DateTimeKind.Utc);
-            var periodEnd = DateTime.SpecifyKind(
-                request.Date.ToDateTime(period.EndTime),
-                DateTimeKind.Utc);
+            var cursor = request.Date.ToDateTime(period.StartTime);
+            var periodEnd = request.Date.ToDateTime(period.EndTime);
             while (cursor.AddMinutes(request.DurationMinutes) <= periodEnd)
             {
                 var end = cursor.AddMinutes(request.DurationMinutes);
-                if (cursor > now
-                    && reservations.All(item => item.Start >= end || item.End <= cursor))
+                var cursorUtc = ConvertLocalToUtc(cursor);
+                var endUtc = ConvertLocalToUtc(end);
+                if (cursorUtc > now
+                    && reservations.All(item => item.Start >= endUtc || item.End <= cursorUtc))
                 {
-                    slots.Add(new AvailableSlotResponse(cursor, end));
+                    slots.Add(new AvailableSlotResponse(cursorUtc, endUtc));
                 }
 
                 cursor = cursor.AddMinutes(30);
@@ -320,6 +355,21 @@ public sealed class ReservationService(
         }
 
         return slots;
+    }
+
+    private DateTime ConvertLocalToUtc(DateOnly date, TimeOnly time) =>
+        ConvertLocalToUtc(date.ToDateTime(time));
+
+    private DateTime ConvertLocalToUtc(DateTime localDateTime)
+    {
+        var unspecified = DateTime.SpecifyKind(localDateTime, DateTimeKind.Unspecified);
+        if (_businessTimeZone.IsInvalidTime(unspecified))
+        {
+            throw new BusinessException(
+                "Odabrano lokalno vrijeme ne postoji zbog promjene računanja vremena.");
+        }
+
+        return TimeZoneInfo.ConvertTimeToUtc(unspecified, _businessTimeZone);
     }
 
     public async Task<IReadOnlyCollection<ProfessionalAvailabilityResponse>> GetMyAvailabilityAsync(

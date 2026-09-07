@@ -26,7 +26,7 @@ class RealtimeNotifications extends ChangeNotifier {
     notifyListeners();
     try {
       await _initializeLocalNotifications();
-      items = (await repository.getNotifications()).items;
+      await _reloadPersistedNotifications();
       ApiClient.ensureConfigured();
       final connection = HubConnectionBuilder()
           .withUrl(
@@ -49,8 +49,9 @@ class RealtimeNotifications extends ChangeNotifier {
         connected = false;
         notifyListeners();
       });
-      connection.onreconnected(({connectionId}) {
+      connection.onreconnected(({connectionId}) async {
         connected = true;
+        await _reloadPersistedNotifications();
         notifyListeners();
       });
       connection.onclose(({error}) {
@@ -71,6 +72,18 @@ class RealtimeNotifications extends ChangeNotifier {
     } finally {
       loading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _reloadPersistedNotifications() async {
+    try {
+      items = (await repository.getNotifications()).items;
+      error = null;
+    } catch (exception) {
+      error = userFacingError(
+        exception,
+        fallback: 'Propuštene obavijesti trenutno nije moguće učitati.',
+      );
     }
   }
 

@@ -41,6 +41,18 @@ public sealed class JobOffersController(IJobOfferService jobOfferService) : Cont
             cancellationToken));
     }
 
+    [Authorize(Roles = RoleNames.Professional)]
+    [HttpGet("/api/offers/my")]
+    public async Task<ActionResult<PagedResponse<JobOfferResponse>>> GetMine(
+        [FromQuery] PagedRequest request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await jobOfferService.GetMineAsync(
+            User.GetUserId(),
+            request,
+            cancellationToken));
+    }
+
     [Authorize(Roles = RoleNames.Client)]
     [HttpPut("{offerId:int}/accept")]
     public async Task<ActionResult<JobOfferResponse>> Accept(

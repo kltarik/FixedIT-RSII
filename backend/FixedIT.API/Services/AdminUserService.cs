@@ -1,3 +1,4 @@
+using System.Data;
 using FixedIT.API.CustomExceptions;
 using FixedIT.API.Data;
 using FixedIT.API.DTOs.Admin;
@@ -94,6 +95,9 @@ public sealed class AdminUserService(
             throw new BusinessException("Administrator ne može deaktivirati vlastiti nalog.");
         }
 
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
         var user = await db.Users
             .IgnoreQueryFilters()
             .Include(item => item.City)
@@ -126,7 +130,13 @@ public sealed class AdminUserService(
         }
 
         user.IsActive = isActive;
+        if (!isActive)
+        {
+            EnsureSucceeded(await userManager.UpdateSecurityStampAsync(user));
+        }
+
         await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         var roles = await userManager.GetRolesAsync(user);
 
         return new AdminUserResponse(

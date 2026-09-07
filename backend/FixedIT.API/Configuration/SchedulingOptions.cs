@@ -8,4 +8,7 @@ public sealed class SchedulingOptions
 
     [Required]
     public string TimeZoneId { get; set; } = string.Empty;
+
+    [Required]
+    public string SqlServerTimeZoneId { get; set; } = string.Empty;
 }

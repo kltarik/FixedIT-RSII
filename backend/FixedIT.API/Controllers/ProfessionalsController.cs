@@ -9,12 +9,12 @@ using Microsoft.AspNetCore.Mvc;
 namespace FixedIT.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/professionals")]
 public sealed class ProfessionalsController(
     IProfessionalService professionalService,
     IRecommendationActivityService recommendationActivityService) : ControllerBase
 {
-    [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult<PagedResponse<ProfessionalSummaryResponse>>> GetPage(
         [FromQuery] PagedRequest request,
@@ -23,7 +23,6 @@ public sealed class ProfessionalsController(
         return Ok(await professionalService.GetPageAsync(request, cancellationToken));
     }
 
-    [AllowAnonymous]
     [HttpGet("search")]
     public async Task<ActionResult<PagedResponse<ProfessionalSummaryResponse>>> Search(
         [FromQuery] ProfessionalSearchRequest filters,
@@ -45,7 +44,6 @@ public sealed class ProfessionalsController(
         return Ok(response);
     }
 
-    [AllowAnonymous]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ProfessionalDetailResponse>> GetById(
         int id,

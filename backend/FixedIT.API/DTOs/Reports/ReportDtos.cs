@@ -94,6 +94,7 @@ public sealed record ProfessionalPerformanceDocumentData(
 
 public sealed record ReservationStatusCountResponse(
     ReservationStatus Status,
+    string StatusName,
     int Count);
 
 public sealed record RoleCountResponse(string Role, int Count);

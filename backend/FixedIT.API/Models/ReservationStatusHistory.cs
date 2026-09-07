@@ -13,4 +13,6 @@ public class ReservationStatusHistory
     public DateTime ChangedAt { get; set; }
 
     public Reservation Reservation { get; set; } = null!;
+    public ReservationStatusDefinition? PreviousStatusDefinition { get; set; }
+    public ReservationStatusDefinition NewStatusDefinition { get; set; } = null!;
 }

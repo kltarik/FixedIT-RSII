@@ -180,10 +180,17 @@ class _ProfessionalsScreenState extends State<ProfessionalsScreen> {
                   hourlyRate.text.replaceAll(',', '.'),
                 );
                 final years = int.tryParse(experience.text);
-                if (rate == null || years == null || selected.isEmpty) {
+                if (rate == null ||
+                    rate <= 0 ||
+                    rate > 1000000 ||
+                    years == null ||
+                    years < 0 ||
+                    years > 100 ||
+                    selected.isEmpty ||
+                    bio.text.trim().isEmpty) {
                   await showApiErrorDialog(
                     dialogContext,
-                    'Unesite ispravnu satnicu, iskustvo i najmanje jednu kategoriju.',
+                    'Unesite opis, pozitivnu satnicu do 1.000.000 EUR, iskustvo od 0 do 100 i najmanje jednu kategoriju.',
                   );
                   return;
                 }

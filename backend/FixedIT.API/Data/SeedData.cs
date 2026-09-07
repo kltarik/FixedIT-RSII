@@ -17,6 +17,7 @@ public static class SeedData
         var userManager = serviceProvider.GetRequiredService<UserManager<User>>();
         var roleManager = serviceProvider.GetRequiredService<RoleManager<Role>>();
         var options = serviceProvider.GetRequiredService<IOptions<SeedDataOptions>>().Value;
+        var currency = serviceProvider.GetRequiredService<IOptions<PayPalOptions>>().Value.Currency;
 
         ValidateOptions(options);
         await SeedRolesAsync(roleManager);
@@ -32,6 +33,7 @@ public static class SeedData
             "Administrator",
             cities[SeedDataConstants.CityNames[0]].Id,
             null,
+            null,
             options.AdminPassword,
             RoleNames.Admin);
 
@@ -45,6 +47,7 @@ public static class SeedData
                 seedClient.LastName,
                 cities[seedClient.CityName].Id,
                 seedClient.PhoneNumber,
+                seedClient.ProfilePictureUrl,
                 options.DefaultUserPassword,
                 RoleNames.Client));
         }
@@ -60,6 +63,7 @@ public static class SeedData
                 seedUser.LastName,
                 cities[seedUser.CityName].Id,
                 seedUser.PhoneNumber,
+                seedUser.ProfilePictureUrl,
                 options.DefaultUserPassword,
                 RoleNames.Professional);
 
@@ -70,7 +74,9 @@ public static class SeedData
                 categories));
         }
 
-        await SeedCompletedReservationsAsync(db, clients, professionals);
+        await SeedCompletedReservationsAsync(db, clients, professionals, currency);
+        await SeedPortfolioItemsAsync(db, professionals);
+        await SeedJobPostingsAsync(db, clients, cities, categories);
     }
 
     private static void ValidateOptions(SeedDataOptions options)
@@ -132,6 +138,7 @@ public static class SeedData
         string lastName,
         int cityId,
         string? phoneNumber,
+        string? profilePictureUrl,
         string password,
         string roleName)
     {
@@ -147,11 +154,18 @@ public static class SeedData
                 LastName = lastName,
                 CityId = cityId,
                 PhoneNumber = phoneNumber,
+                ProfilePictureUrl = profilePictureUrl,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
 
             EnsureSucceeded(await userManager.CreateAsync(user, password));
+        }
+        else if (string.IsNullOrWhiteSpace(user.ProfilePictureUrl)
+            && !string.IsNullOrWhiteSpace(profilePictureUrl))
+        {
+            user.ProfilePictureUrl = profilePictureUrl;
+            EnsureSucceeded(await userManager.UpdateAsync(user));
         }
 
         if (!await userManager.IsInRoleAsync(user, roleName))
@@ -224,7 +238,8 @@ public static class SeedData
     private static async Task SeedCompletedReservationsAsync(
         AppDbContext db,
         IReadOnlyList<User> clients,
-        IReadOnlyList<ProfessionalProfile> professionals)
+        IReadOnlyList<ProfessionalProfile> professionals,
+        string currency)
     {
         var now = DateTime.UtcNow;
 
@@ -275,6 +290,21 @@ public static class SeedData
                 await db.SaveChangesAsync();
             }
 
+            if (!await db.Payments.AnyAsync(item => item.ReservationId == reservation.Id))
+            {
+                db.Payments.Add(new Payment
+                {
+                    ReservationId = reservation.Id,
+                    PayPalOrderId = $"SEED-ORDER-{reservation.Id}",
+                    PayPalCaptureId = $"SEED-CAPTURE-{reservation.Id}",
+                    Amount = reservation.TotalPrice,
+                    Currency = currency,
+                    Status = PaymentStatus.Completed,
+                    CreatedAt = reservation.UpdatedAt,
+                    CompletedAt = reservation.UpdatedAt
+                });
+            }
+
             var userRating = await db.UserRatings.SingleOrDefaultAsync(rating =>
                     rating.UserId == reservation.ClientUserId
                     && rating.ProfessionalProfileId == reservation.ProfessionalProfileId
@@ -303,6 +333,73 @@ public static class SeedData
             profile.AverageRating = await db.Reviews
                 .Where(review => review.ProfessionalProfileId == profile.Id)
                 .AverageAsync(review => (decimal)review.Rating);
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task SeedPortfolioItemsAsync(
+        AppDbContext db,
+        IReadOnlyList<ProfessionalProfile> professionals)
+    {
+        foreach (var seed in SeedDataConstants.PortfolioItems)
+        {
+            var professionalId = professionals[seed.ProfessionalIndex].Id;
+            if (await db.PortfolioItems.AnyAsync(item =>
+                    item.ProfessionalProfileId == professionalId
+                    && item.Title == seed.Title))
+            {
+                continue;
+            }
+
+            db.PortfolioItems.Add(new PortfolioItem
+            {
+                ProfessionalProfileId = professionalId,
+                Title = seed.Title,
+                Description = seed.Description,
+                ImageUrl = seed.ImageUrl,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task SeedJobPostingsAsync(
+        AppDbContext db,
+        IReadOnlyList<User> clients,
+        IReadOnlyDictionary<string, City> cities,
+        IReadOnlyDictionary<string, Category> categories)
+    {
+        foreach (var seed in SeedDataConstants.JobPostings)
+        {
+            var job = await db.JobPostings
+                .Include(item => item.Images)
+                .SingleOrDefaultAsync(item => item.Title == seed.Title);
+            if (job is null)
+            {
+                job = new JobPosting
+                {
+                    ClientUserId = clients[seed.ClientIndex].Id,
+                    Title = seed.Title,
+                    Description = seed.Description,
+                    CategoryId = categories[seed.CategoryName].Id,
+                    CityId = cities[seed.CityName].Id,
+                    Budget = seed.Budget,
+                    Status = JobPostingStatus.Open,
+                    CreatedAt = DateTime.UtcNow
+                };
+                db.JobPostings.Add(job);
+            }
+
+            if (!job.Images.Any(image => image.ImageUrl == seed.ImageUrl))
+            {
+                job.Images.Add(new JobPostingImage
+                {
+                    ImageUrl = seed.ImageUrl,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
         }
 
         await db.SaveChangesAsync();

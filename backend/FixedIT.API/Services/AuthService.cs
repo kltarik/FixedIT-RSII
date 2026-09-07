@@ -129,11 +129,21 @@ public sealed class AuthService(
     public async Task LogoutAsync(string userId, CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+        var user = await db.Users
+            .IgnoreQueryFilters()
+            .SingleOrDefaultAsync(item => item.Id == userId, cancellationToken)
+            ?? throw new UnauthorizedException("Korisnički nalog nije dostupan.");
+
+        EnsureSucceeded(await userManager.UpdateSecurityStampAsync(user));
         await db.RefreshTokens
             .Where(token => token.UserId == userId && token.RevokedAt == null && token.ExpiresAt > now)
             .ExecuteUpdateAsync(
                 setters => setters.SetProperty(token => token.RevokedAt, now),
                 cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task RequestPasswordResetAsync(
@@ -149,6 +159,9 @@ public sealed class AuthService(
             return;
         }
 
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
         var now = DateTime.UtcNow;
         await db.PasswordResetTokens
             .Where(token => token.UserId == user.Id && token.UsedAt == null)
@@ -165,6 +178,7 @@ public sealed class AuthService(
         };
         db.PasswordResetTokens.Add(token);
         await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         try
         {
@@ -180,6 +194,8 @@ public sealed class AuthService(
         catch (Exception exception)
         {
             logger.LogError(exception, "Kod za promjenu lozinke nije moguće poslati korisniku {UserId}.", user.Id);
+            throw new ServiceUnavailableException(
+                "Kod za promjenu lozinke trenutno nije moguće poslati. Pokušajte ponovo.");
         }
     }
 
@@ -188,6 +204,9 @@ public sealed class AuthService(
         CancellationToken cancellationToken)
     {
         var normalizedEmail = userManager.NormalizeEmail(request.Email.Trim());
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
         var user = await db.Users
             .IgnoreQueryFilters()
             .SingleOrDefaultAsync(item => item.NormalizedEmail == normalizedEmail, cancellationToken)
@@ -215,6 +234,7 @@ public sealed class AuthService(
                 setters => setters.SetProperty(item => item.RevokedAt, now),
                 cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     private async Task<AuthResponse> IssueTokensAsync(

@@ -257,6 +257,32 @@ public sealed class ReferenceDataService(
             .ToArrayAsync(cancellationToken);
     }
 
+    public async Task<ReservationStatusDefinitionResponse> CreateReservationStatusAsync(
+        SaveReservationStatusDefinitionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var statusId = request.Id!.Value;
+        if (await db.ReservationStatusDefinitions.AnyAsync(
+                item => item.Id == statusId,
+                cancellationToken))
+        {
+            throw new BusinessException("Status rezervacije s ovom šifrom već postoji.");
+        }
+
+        var status = new ReservationStatusDefinition
+        {
+            Id = statusId,
+            Name = RequiredText(request.Name, "Naziv statusa"),
+            Description = RequiredText(request.Description, "Opis statusa")
+        };
+        db.ReservationStatusDefinitions.Add(status);
+        await db.SaveChangesAsync(cancellationToken);
+        return new ReservationStatusDefinitionResponse(
+            (int)status.Id,
+            status.Name,
+            status.Description);
+    }
+
     public async Task<ReservationStatusDefinitionResponse> UpdateReservationStatusAsync(
         int id,
         UpdateReservationStatusDefinitionRequest request,
@@ -275,6 +301,35 @@ public sealed class ReferenceDataService(
         status.Description = RequiredText(request.Description, "Opis statusa");
         await db.SaveChangesAsync(cancellationToken);
         return new ReservationStatusDefinitionResponse((int)status.Id, status.Name, status.Description);
+    }
+
+    public async Task DeleteReservationStatusAsync(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        if (!Enum.IsDefined(typeof(ReservationStatus), id))
+        {
+            throw new NotFoundException("Status rezervacije nije pronađen.");
+        }
+
+        var statusId = (ReservationStatus)id;
+        var status = await db.ReservationStatusDefinitions
+            .SingleOrDefaultAsync(item => item.Id == statusId, cancellationToken)
+            ?? throw new NotFoundException("Status rezervacije nije pronađen.");
+        var inUse = await db.Reservations
+                .IgnoreQueryFilters()
+                .AnyAsync(item => item.Status == statusId, cancellationToken)
+            || await db.ReservationStatusHistories.AnyAsync(
+                item => item.NewStatus == statusId || item.PreviousStatus == statusId,
+                cancellationToken);
+        if (inUse)
+        {
+            throw new BusinessException(
+                "Status rezervacije nije moguće obrisati dok ga koriste rezervacije ili historija statusa.");
+        }
+
+        db.ReservationStatusDefinitions.Remove(status);
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<PagedResponse<TResponse>> PageAsync<TEntity, TResponse>(

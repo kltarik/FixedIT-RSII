@@ -56,6 +56,7 @@ public sealed class GlobalExceptionMiddleware(
             BusinessException business => (business.StatusCode, business.Message),
             NotFoundException notFound => (notFound.StatusCode, notFound.Message),
             UnauthorizedException unauthorized => (unauthorized.StatusCode, unauthorized.Message),
+            ServiceUnavailableException unavailable => (unavailable.StatusCode, unavailable.Message),
             _ => (StatusCodes.Status500InternalServerError, UnexpectedErrorMessage)
         };
     }

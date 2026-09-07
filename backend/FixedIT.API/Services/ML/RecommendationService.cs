@@ -48,8 +48,10 @@ public sealed class RecommendationService(
                     LabelColumnName = nameof(UserRatingData.Label),
                     MatrixColumnIndexColumnName = UserIdEncoded,
                     MatrixRowIndexColumnName = ProfessionalIdEncoded,
+                    LossFunction = MatrixFactorizationTrainer.LossFunctionType.SquareLossRegression,
                     NumberOfIterations = _options.NumberOfIterations,
-                    ApproximationRank = _options.ApproximationRank
+                    ApproximationRank = _options.ApproximationRank,
+                    LearningRate = _options.LearningRate
                 }));
         var model = pipeline.Fit(data);
         var newEngine = mlContext.Model.CreatePredictionEngine<UserRatingData, RatingPrediction>(

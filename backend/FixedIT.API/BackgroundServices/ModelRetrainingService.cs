@@ -88,6 +88,15 @@ public sealed class ModelRetrainingService(
             var signals = reservationSignals
                 .Concat(profileViewSignals)
                 .Concat(categorySearchSignals)
+                .GroupBy(signal => new { signal.UserId, signal.ProfessionalId })
+                .Select(group => new UserRatingData
+                {
+                    UserId = group.Key.UserId,
+                    ProfessionalId = group.Key.ProfessionalId,
+                    Label = group.Sum(signal => signal.Label)
+                })
+                .OrderBy(signal => signal.UserId)
+                .ThenBy(signal => signal.ProfessionalId)
                 .ToArray();
 
             recommendationService.TrainModel(signals);

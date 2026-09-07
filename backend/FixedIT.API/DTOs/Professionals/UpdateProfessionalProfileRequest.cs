@@ -9,7 +9,7 @@ public sealed class UpdateProfessionalProfileRequest
     [MaxLength(DatabaseConstants.DescriptionMaxLength)]
     public string Bio { get; set; } = string.Empty;
 
-    [Range(0, 1_000_000)]
+    [Range(typeof(decimal), "0.01", "1000000")]
     public decimal HourlyRate { get; set; }
 
     [Range(0, 100)]
@@ -25,7 +25,7 @@ public sealed class AdminUpdateProfessionalProfileRequest
     [MaxLength(DatabaseConstants.DescriptionMaxLength)]
     public string Bio { get; set; } = string.Empty;
 
-    [Range(0, 1_000_000)]
+    [Range(typeof(decimal), "0.01", "1000000")]
     public decimal HourlyRate { get; set; }
 
     [Range(0, 100)]

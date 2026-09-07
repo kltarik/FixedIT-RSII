@@ -16,7 +16,14 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
   String? _error;
   int _page = 1;
   int? _statusFilter;
+  int? _categoryFilter;
+  int? _cityFilter;
+  DateTime? _fromFilter;
+  DateTime? _toFilter;
   int? _busyId;
+  List<ReservationStatusRecord> _statuses = const [];
+  List<CategoryRecord> _categories = const [];
+  List<CityRecord> _cities = const [];
 
   @override
   void initState() {
@@ -31,11 +38,27 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
       _error = null;
     });
     try {
-      final result = await widget.repository.getReservations(
-        page: _page,
-        status: _statusFilter,
-      );
-      if (mounted) setState(() => _result = result);
+      final values = await Future.wait<Object>([
+        widget.repository.getReservations(
+          page: _page,
+          status: _statusFilter,
+          categoryId: _categoryFilter,
+          cityId: _cityFilter,
+          from: _fromFilter,
+          to: _toFilter,
+        ),
+        widget.repository.getReservationStatuses(),
+        widget.repository.getCategories(),
+        widget.repository.getCities(),
+      ]);
+      if (mounted) {
+        setState(() {
+          _result = values[0] as PagedResult<ReservationRecord>;
+          _statuses = values[1] as List<ReservationStatusRecord>;
+          _categories = (values[2] as PagedResult<CategoryRecord>).items;
+          _cities = (values[3] as PagedResult<CityRecord>).items;
+        });
+      }
     } catch (exception) {
       if (mounted) setState(() => _error = userError(exception));
     }
@@ -44,7 +67,10 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
   Future<void> _changeStatus(ReservationRecord reservation) async {
     final selection = await showDialog<_StatusSelection>(
       context: context,
-      builder: (context) => _StatusDialog(reservation: reservation),
+      builder: (context) => _StatusDialog(
+        reservation: reservation,
+        statusNames: {for (final status in _statuses) status.id: status.name},
+      ),
     );
     if (selection == null) return;
     setState(() => _busyId = reservation.id);
@@ -82,6 +108,44 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
     }
   }
 
+  String _statusName(int id) {
+    for (final status in _statuses) {
+      if (status.id == id) return status.name;
+    }
+    return reservationStatusName(id);
+  }
+
+  Future<void> _pickDate(bool start) async {
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: start
+          ? (_fromFilter ?? DateTime.now())
+          : (_toFilter ?? _fromFilter ?? DateTime.now()),
+      firstDate: start ? DateTime(2020) : (_fromFilter ?? DateTime(2020)),
+      lastDate: DateTime.now().add(const Duration(days: 3650)),
+    );
+    if (selected == null) return;
+    setState(() {
+      if (start) {
+        _fromFilter = selected;
+      } else {
+        _toFilter = selected;
+      }
+    });
+    await _load(1);
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _statusFilter = null;
+      _categoryFilter = null;
+      _cityFilter = null;
+      _fromFilter = null;
+      _toFilter = null;
+    });
+    _load(1);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_error != null) return ErrorPanel(message: _error!, onRetry: _load);
@@ -102,12 +166,13 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
             ),
           ],
         ),
-        SizedBox(
-          width: 250,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: SizedBox(
-              width: 250,
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            SizedBox(
+              width: 220,
               child: DropdownButtonFormField<int?>(
                 initialValue: _statusFilter,
                 decoration: const InputDecoration(
@@ -118,10 +183,10 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
                     value: null,
                     child: Text('Svi statusi'),
                   ),
-                  for (var status = 1; status <= 5; status++)
+                  for (final status in _statuses)
                     DropdownMenuItem(
-                      value: status,
-                      child: Text(reservationStatusName(status)),
+                      value: status.id,
+                      child: Text(status.name),
                     ),
                 ],
                 onChanged: (value) {
@@ -130,7 +195,71 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
                 },
               ),
             ),
-          ),
+            SizedBox(
+              width: 220,
+              child: DropdownButtonFormField<int?>(
+                initialValue: _categoryFilter,
+                decoration: const InputDecoration(labelText: 'Kategorija'),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Sve kategorije'),
+                  ),
+                  for (final category in _categories)
+                    DropdownMenuItem(
+                      value: category.id,
+                      child: Text(category.name),
+                    ),
+                ],
+                onChanged: (value) {
+                  setState(() => _categoryFilter = value);
+                  _load(1);
+                },
+              ),
+            ),
+            SizedBox(
+              width: 220,
+              child: DropdownButtonFormField<int?>(
+                initialValue: _cityFilter,
+                decoration: const InputDecoration(labelText: 'Lokacija'),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Sve lokacije'),
+                  ),
+                  for (final city in _cities)
+                    DropdownMenuItem(value: city.id, child: Text(city.name)),
+                ],
+                onChanged: (value) {
+                  setState(() => _cityFilter = value);
+                  _load(1);
+                },
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _pickDate(true),
+              icon: const Icon(Icons.date_range),
+              label: Text(
+                _fromFilter == null
+                    ? 'Od datuma'
+                    : 'Od ${dateFormat.format(_fromFilter!)}',
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _pickDate(false),
+              icon: const Icon(Icons.event),
+              label: Text(
+                _toFilter == null
+                    ? 'Do datuma'
+                    : 'Do ${dateFormat.format(_toFilter!)}',
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _clearFilters,
+              icon: const Icon(Icons.filter_alt_off),
+              label: const Text('Očisti filtere'),
+            ),
+          ],
         ),
         const SizedBox(height: 14),
         if (_result!.items.isEmpty)
@@ -190,9 +319,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
                             ),
                             DataCell(
                               StatusPill(
-                                label: reservationStatusName(
-                                  reservation.status,
-                                ),
+                                label: _statusName(reservation.status),
                                 positive: reservation.status != 5,
                               ),
                             ),
@@ -242,8 +369,9 @@ class _StatusSelection {
 }
 
 class _StatusDialog extends StatefulWidget {
-  const _StatusDialog({required this.reservation});
+  const _StatusDialog({required this.reservation, required this.statusNames});
   final ReservationRecord reservation;
+  final Map<int, String> statusNames;
   @override
   State<_StatusDialog> createState() => _StatusDialogState();
 }
@@ -278,7 +406,10 @@ class _StatusDialogState extends State<_StatusDialog> {
                     .map(
                       (status) => DropdownMenuItem(
                         value: status,
-                        child: Text(reservationStatusName(status)),
+                        child: Text(
+                          widget.statusNames[status] ??
+                              reservationStatusName(status),
+                        ),
                       ),
                     )
                     .toList(),

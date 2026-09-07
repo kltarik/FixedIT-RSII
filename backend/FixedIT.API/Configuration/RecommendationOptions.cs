@@ -9,10 +9,13 @@ public sealed class RecommendationOptions
     public int Seed { get; set; } = 42;
 
     [Range(1, 10_000)]
-    public int NumberOfIterations { get; set; } = 20;
+    public int NumberOfIterations { get; set; } = 30;
 
     [Range(1, 1_000)]
-    public int ApproximationRank { get; set; } = 100;
+    public int ApproximationRank { get; set; } = 20;
+
+    [Range(typeof(double), "0.000001", "1")]
+    public double LearningRate { get; set; } = 0.001;
 
     [Range(1, 10_000)]
     public int MinimumTrainingRatings { get; set; } = 5;

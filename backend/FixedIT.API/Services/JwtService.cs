@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using FixedIT.API.Configuration;
+using FixedIT.API.Constants;
 using FixedIT.API.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
@@ -20,12 +21,14 @@ public sealed class JwtService(
         var now = DateTime.UtcNow;
         var expiresAt = now.AddHours(_options.ExpiryHours);
         var roles = await userManager.GetRolesAsync(user);
+        var securityStamp = await userManager.GetSecurityStampAsync(user);
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id),
             new(ClaimTypes.NameIdentifier, user.Id),
             new(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(AuthenticationConstants.SecurityStampClaimType, securityStamp)
         };
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 

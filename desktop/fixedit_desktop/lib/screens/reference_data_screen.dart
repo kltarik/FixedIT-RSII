@@ -55,11 +55,18 @@ class _CountriesTabState extends State<_CountriesTab> {
   PagedResult<CountryRecord>? _result;
   String? _error;
   int _page = 1;
+  final _search = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   Future<void> _load([int? page]) async {
@@ -69,7 +76,10 @@ class _CountriesTabState extends State<_CountriesTab> {
       _error = null;
     });
     try {
-      final result = await widget.repository.getCountries(page: _page);
+      final result = await widget.repository.getCountries(
+        page: _page,
+        search: _search.text.trim(),
+      );
       if (mounted) setState(() => _result = result);
     } catch (error) {
       if (mounted) setState(() => _error = userError(error));
@@ -83,14 +93,19 @@ class _CountriesTabState extends State<_CountriesTab> {
       context,
       title: country == null ? 'Nova država' : 'Uredi državu',
       fields: [
-        TextField(
+        TextFormField(
           controller: name,
           decoration: const InputDecoration(labelText: 'Naziv'),
+          validator: (value) => _requiredText(value, 'Naziv države', 100),
         ),
-        TextField(
+        TextFormField(
           controller: code,
           maxLength: 3,
           decoration: const InputDecoration(labelText: 'Oznaka (2-3 slova)'),
+          validator: (value) =>
+              RegExp(r'^[A-Za-z]{2,3}$').hasMatch(value?.trim() ?? '')
+              ? null
+              : 'Unesite oznaku države od 2 ili 3 slova, npr. BIH.',
         ),
       ],
       onSave: () => widget.repository.saveCountry(
@@ -112,6 +127,8 @@ class _CountriesTabState extends State<_CountriesTab> {
     onRetry: _load,
     onAdd: _edit,
     onPage: _load,
+    searchController: _search,
+    onSearch: () => _load(1),
     columns: const [
       DataColumn(label: Text('Naziv')),
       DataColumn(label: Text('Oznaka')),
@@ -154,11 +171,18 @@ class _CitiesTabState extends State<_CitiesTab> {
   PagedResult<CityRecord>? _result;
   String? _error;
   int _page = 1;
+  final _search = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   Future<void> _load([int? page]) async {
@@ -168,7 +192,10 @@ class _CitiesTabState extends State<_CitiesTab> {
       _error = null;
     });
     try {
-      final result = await widget.repository.getCities(page: _page);
+      final result = await widget.repository.getCities(
+        page: _page,
+        search: _search.text.trim(),
+      );
       if (mounted) setState(() => _result = result);
     } catch (error) {
       if (mounted) setState(() => _error = userError(error));
@@ -188,9 +215,10 @@ class _CitiesTabState extends State<_CitiesTab> {
       context,
       title: city == null ? 'Novi grad' : 'Uredi grad',
       fields: [
-        TextField(
+        TextFormField(
           controller: name,
           decoration: const InputDecoration(labelText: 'Naziv'),
+          validator: (value) => _requiredText(value, 'Naziv grada', 100),
         ),
         StatefulBuilder(
           builder: (context, setDialogState) => DropdownButtonFormField<int>(
@@ -227,6 +255,8 @@ class _CitiesTabState extends State<_CitiesTab> {
     onRetry: _load,
     onAdd: _edit,
     onPage: _load,
+    searchController: _search,
+    onSearch: () => _load(1),
     columns: const [
       DataColumn(label: Text('Grad')),
       DataColumn(label: Text('Država')),
@@ -269,11 +299,18 @@ class _CategoriesTabState extends State<_CategoriesTab> {
   PagedResult<CategoryRecord>? _result;
   String? _error;
   int _page = 1;
+  final _search = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   Future<void> _load([int? page]) async {
@@ -283,7 +320,10 @@ class _CategoriesTabState extends State<_CategoriesTab> {
       _error = null;
     });
     try {
-      final result = await widget.repository.getCategories(page: _page);
+      final result = await widget.repository.getCategories(
+        page: _page,
+        search: _search.text.trim(),
+      );
       if (mounted) setState(() => _result = result);
     } catch (error) {
       if (mounted) setState(() => _error = userError(error));
@@ -298,21 +338,24 @@ class _CategoriesTabState extends State<_CategoriesTab> {
       context,
       title: category == null ? 'Nova kategorija' : 'Uredi kategoriju',
       fields: [
-        TextField(
+        TextFormField(
           controller: name,
           decoration: const InputDecoration(labelText: 'Naziv'),
+          validator: (value) => _requiredText(value, 'Naziv kategorije', 100),
         ),
-        TextField(
+        TextFormField(
           controller: description,
           minLines: 2,
           maxLines: 4,
           decoration: const InputDecoration(labelText: 'Opis'),
+          validator: (value) => _requiredText(value, 'Opis kategorije', 2000),
         ),
-        TextField(
+        TextFormField(
           controller: iconUrl,
           decoration: const InputDecoration(
             labelText: 'URL ikone (opcionalno)',
           ),
+          validator: _optionalUrl,
         ),
       ],
       onSave: () => widget.repository.saveCategory(
@@ -336,6 +379,8 @@ class _CategoriesTabState extends State<_CategoriesTab> {
     onRetry: _load,
     onAdd: _edit,
     onPage: _load,
+    searchController: _search,
+    onSearch: () => _load(1),
     columns: const [
       DataColumn(label: Text('Naziv')),
       DataColumn(label: Text('Opis')),
@@ -379,11 +424,18 @@ class _StatusesTab extends StatefulWidget {
 class _StatusesTabState extends State<_StatusesTab> {
   List<ReservationStatusRecord>? _items;
   String? _error;
+  final _search = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -399,29 +451,72 @@ class _StatusesTabState extends State<_StatusesTab> {
     }
   }
 
-  Future<void> _edit(ReservationStatusRecord status) async {
-    final name = TextEditingController(text: status.name);
-    final description = TextEditingController(text: status.description);
+  Future<void> _edit([ReservationStatusRecord? status]) async {
+    final missingIds = [
+      for (var id = 1; id <= 5; id++)
+        if (!(_items ?? const []).any((item) => item.id == id)) id,
+    ];
+    if (status == null && missingIds.isEmpty) {
+      await showApiErrorDialog(
+        context,
+        'Svih pet dozvoljenih statusa već postoji.',
+      );
+      return;
+    }
+
+    var selectedId = status?.id ?? missingIds.first;
+    final name = TextEditingController(
+      text: status?.name ?? reservationStatusName(selectedId),
+    );
+    final description = TextEditingController(text: status?.description);
     final saved = await _showForm(
       context,
-      title: 'Uredi status',
+      title: status == null ? 'Novi status rezervacije' : 'Uredi status',
       fields: [
-        TextField(
+        if (status == null)
+          StatefulBuilder(
+            builder: (context, setDialogState) => DropdownButtonFormField<int>(
+              initialValue: selectedId,
+              decoration: const InputDecoration(labelText: 'Šifra statusa'),
+              items: missingIds
+                  .map(
+                    (id) => DropdownMenuItem(
+                      value: id,
+                      child: Text('$id - ${reservationStatusName(id)}'),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setDialogState(() => selectedId = value);
+                name.text = reservationStatusName(value);
+              },
+            ),
+          ),
+        TextFormField(
           controller: name,
           decoration: const InputDecoration(labelText: 'Naziv'),
+          validator: (value) => _requiredText(value, 'Naziv statusa', 100),
         ),
-        TextField(
+        TextFormField(
           controller: description,
           minLines: 2,
           maxLines: 4,
           decoration: const InputDecoration(labelText: 'Opis'),
+          validator: (value) => _requiredText(value, 'Opis statusa', 2000),
         ),
       ],
-      onSave: () => widget.repository.updateReservationStatus(
-        id: status.id,
-        name: name.text,
-        description: description.text,
-      ),
+      onSave: () => status == null
+          ? widget.repository.createReservationStatus(
+              id: selectedId,
+              name: name.text,
+              description: description.text,
+            )
+          : widget.repository.updateReservationStatus(
+              id: status.id,
+              name: name.text,
+              description: description.text,
+            ),
     );
     name.dispose();
     description.dispose();
@@ -432,40 +527,85 @@ class _StatusesTabState extends State<_StatusesTab> {
   Widget build(BuildContext context) {
     if (_error != null) return ErrorPanel(message: _error!, onRetry: _load);
     if (_items == null) return const LoadingPanel();
-    return Card(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: scrollableTable(
-          DataTable(
-            columns: const [
-              DataColumn(label: Text('Šifra')),
-              DataColumn(label: Text('Naziv')),
-              DataColumn(label: Text('Opis')),
-              DataColumn(label: Text('Akcije')),
-            ],
-            rows: _items!
-                .map(
-                  (status) => DataRow(
-                    cells: [
-                      DataCell(Text('${status.id}')),
-                      DataCell(Text(status.name)),
-                      DataCell(
-                        SizedBox(width: 460, child: Text(status.description)),
-                      ),
-                      DataCell(
-                        IconButton(
-                          tooltip: 'Uredi',
-                          onPressed: () => _edit(status),
-                          icon: const Icon(Icons.edit_outlined),
+    final search = _search.text.trim().toLowerCase();
+    final visibleItems = _items!
+        .where(
+          (status) =>
+              search.isEmpty ||
+              status.name.toLowerCase().contains(search) ||
+              status.description.toLowerCase().contains(search),
+        )
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _search,
+                decoration: const InputDecoration(
+                  labelText: 'Pretraži statuse',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onSubmitted: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(width: 12),
+            FilledButton.icon(
+              onPressed: _edit,
+              icon: const Icon(Icons.add),
+              label: const Text('Dodaj'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: Card(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: scrollableTable(
+                DataTable(
+                  columns: const [
+                    DataColumn(label: Text('Šifra')),
+                    DataColumn(label: Text('Naziv')),
+                    DataColumn(label: Text('Opis')),
+                    DataColumn(label: Text('Akcije')),
+                  ],
+                  rows: visibleItems
+                      .map(
+                        (status) => DataRow(
+                          cells: [
+                            DataCell(Text('${status.id}')),
+                            DataCell(Text(status.name)),
+                            DataCell(
+                              SizedBox(
+                                width: 460,
+                                child: Text(status.description),
+                              ),
+                            ),
+                            DataCell(
+                              _actions(
+                                onEdit: () => _edit(status),
+                                onDelete: () => _deleteReference(
+                                  context,
+                                  'status ${status.name}',
+                                  () => widget.repository
+                                      .deleteReservationStatus(status.id),
+                                  _load,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                )
-                .toList(),
+                      )
+                      .toList(),
+                ),
+              ),
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -477,6 +617,8 @@ Widget _referenceTable<T>({
   required VoidCallback onRetry,
   required VoidCallback onAdd,
   required ValueChanged<int> onPage,
+  required TextEditingController searchController,
+  required VoidCallback onSearch,
   required List<DataColumn> columns,
   required List<DataRow> rows,
 }) {
@@ -485,13 +627,35 @@ Widget _referenceTable<T>({
   return Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Align(
-        alignment: Alignment.centerRight,
-        child: FilledButton.icon(
-          onPressed: onAdd,
-          icon: const Icon(Icons.add),
-          label: const Text('Dodaj'),
-        ),
+      Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: searchController,
+              decoration: InputDecoration(
+                labelText: 'Pretraga',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: searchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Očisti pretragu',
+                        onPressed: () {
+                          searchController.clear();
+                          onSearch();
+                        },
+                        icon: const Icon(Icons.clear),
+                      ),
+              ),
+              onSubmitted: (_) => onSearch(),
+            ),
+          ),
+          const SizedBox(width: 12),
+          FilledButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add),
+            label: const Text('Dodaj'),
+          ),
+        ],
       ),
       const SizedBox(height: 12),
       Expanded(
@@ -542,6 +706,7 @@ Future<bool> _showForm(
   required Future<Object> Function() onSave,
 }) async {
   var busy = false;
+  final formKey = GlobalKey<FormState>();
   final saved = await showDialog<bool>(
     context: context,
     barrierDismissible: false,
@@ -550,15 +715,18 @@ Future<bool> _showForm(
         title: Text(title),
         content: SizedBox(
           width: 480,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final field in fields)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: field,
-                ),
-            ],
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final field in fields)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: field,
+                  ),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -570,6 +738,7 @@ Future<bool> _showForm(
             onPressed: busy
                 ? null
                 : () async {
+                    if (!formKey.currentState!.validate()) return;
                     setState(() => busy = true);
                     try {
                       await onSave();
@@ -599,6 +768,26 @@ Future<bool> _showForm(
     ),
   );
   return saved == true;
+}
+
+String? _requiredText(String? value, String fieldName, int maxLength) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) return '$fieldName je obavezan.';
+  if (text.length > maxLength) {
+    return '$fieldName može sadržavati najviše $maxLength znakova.';
+  }
+  return null;
+}
+
+String? _optionalUrl(String? value) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) return null;
+  final uri = Uri.tryParse(text);
+  return uri != null &&
+          (uri.scheme == 'http' || uri.scheme == 'https') &&
+          uri.host.isNotEmpty
+      ? null
+      : 'Unesite potpun URL, npr. https://example.com/slika.png.';
 }
 
 Future<void> _deleteReference(

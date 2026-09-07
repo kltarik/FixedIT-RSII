@@ -78,6 +78,12 @@ koji nije isti nalog kao **Business** sandbox merchant povezan s vrijednostima
 `PAYPAL_CLIENT_ID` i `PAYPAL_CLIENT_SECRET`. Korištenje merchant naloga kao
 kupca PayPal odbija porukom `COMPLIANCE_VIOLATION`.
 
+Podaci za FixedIT testne korisnike iz naredne tabele nisu PayPal podaci. Email i
+lozinku Personal sandbox kupca pronaći u PayPal Developer Dashboardu pod
+`Testing Tools > Sandbox Accounts > Personal account > View/Edit Account`.
+Business sandbox nalog predstavlja prodavca, a Personal sandbox nalog kupca.
+Detaljne PayPal upute dostupne su u [Sandbox accounts dokumentaciji](https://developer.paypal.com/sandbox-testing/accounts/).
+
 Nakon što klijent odobri plaćanje u ugrađenom PayPal prozoru, aplikacija
 automatski presreće povratni URL i poziva serversku potvrdu naplate. Uspješan
 capture ažurira status plaćanja, zaradu profesionalca i završne izvještaje.

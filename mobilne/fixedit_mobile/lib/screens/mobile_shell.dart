@@ -68,8 +68,8 @@ class _MobileShellState extends State<MobileShell> {
               ),
             ),
             icon: Badge(
-              isLabelVisible: realtime.items.isNotEmpty,
-              label: Text('${realtime.items.length}'),
+              isLabelVisible: realtime.unreadCount > 0,
+              label: Text('${realtime.unreadCount}'),
               child: Icon(
                 realtime.connected
                     ? Icons.notifications_active_outlined

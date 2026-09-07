@@ -16,7 +16,7 @@ class NotificationsScreen extends StatelessWidget {
           title: const Text('Obavijesti'),
           actions: [
             TextButton(
-              onPressed: service.items.isEmpty ? null : service.markAllRead,
+              onPressed: service.unreadCount == 0 ? null : service.markAllRead,
               child: const Text('Pročitaj sve'),
             ),
           ],
@@ -35,7 +35,7 @@ class NotificationsScreen extends StatelessWidget {
                 itemBuilder: (_, index) {
                   final item = service.items[index];
                   return ListTile(
-                    onTap: () => service.markRead(item),
+                    onTap: item.isRead ? null : () => service.markRead(item),
                     leading: CircleAvatar(
                       child: Icon(
                         item.isRead

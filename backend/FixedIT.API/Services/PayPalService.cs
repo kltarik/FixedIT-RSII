@@ -371,7 +371,7 @@ internal sealed class PayPalService(
 
         if (issues.Contains("COMPLIANCE_VIOLATION", StringComparer.Ordinal))
         {
-            return "PayPal je odbio transakciju zbog ograničenja naloga. U sandboxu koristite odvojene Business i Personal testne naloge.";
+            return "PayPal sandbox je odbio transakciju. U PayPal Developer Dashboardu koristite Personal testni nalog kao kupca; Business nalog povezan s API ključevima je prodavac i ne može platiti sam sebi.";
         }
 
         if (issues.Contains("INSTRUMENT_DECLINED", StringComparer.Ordinal))

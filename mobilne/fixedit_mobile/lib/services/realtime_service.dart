@@ -17,6 +17,7 @@ class RealtimeNotifications extends ChangeNotifier {
   bool loading = false;
   bool connected = false;
   String? error;
+  int get unreadCount => items.where((item) => !item.isRead).length;
 
   Future<void> start() async {
     if (_connection != null) return;

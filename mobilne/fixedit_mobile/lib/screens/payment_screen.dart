@@ -134,9 +134,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                child: Text(
-                  '${money.format(order!.amount)} ${order!.currency}',
-                  style: Theme.of(context).textTheme.titleLarge,
+                child: Column(
+                  children: [
+                    Text(
+                      '${money.format(order!.amount)} ${order!.currency}',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'PayPal sandbox: prijavite se Personal testnim PayPal '
+                      'nalogom iz Developer Dashboarda. FixedIT nalog i '
+                      'Business PayPal nalog nisu podaci za ovu prijavu.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ),
               ),
               Expanded(

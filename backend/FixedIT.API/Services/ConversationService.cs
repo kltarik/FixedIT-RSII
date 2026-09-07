@@ -261,6 +261,7 @@ public sealed class ConversationService(
             Content = normalizedContent,
             SentAt = DateTime.UtcNow
         };
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         db.Messages.Add(message);
         await db.SaveChangesAsync(cancellationToken);
 
@@ -273,43 +274,42 @@ public sealed class ConversationService(
         var preview = message.Content.Length <= 200
             ? message.Content
             : message.Content[..200];
-        try
+        var notifications = recipientIds.Select(recipientId => new Notification
         {
-            await notificationService.CreateAndPushAsync(
-                recipientIds.Select(recipientId => new CreateNotificationCommand(
-                    recipientId,
-                    $"Nova poruka od {senderName}",
-                    preview,
-                    NotificationType.Message,
-                    message.SentAt)).ToArray(),
-                cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(
-                exception,
-                "In-app notification failed after message {MessageId} was saved.",
-                message.Id);
-        }
+            UserId = recipientId,
+            Title = $"Nova poruka od {senderName}",
+            Body = preview,
+            IsRead = false,
+            CreatedAt = message.SentAt,
+            Type = NotificationType.Message
+        }).ToArray();
+        db.Notifications.AddRange(notifications);
+        await eventPublisher.PublishNewMessageAsync(
+            new NewMessageNotificationEvent(
+                conversationId,
+                message.Id,
+                userId,
+                senderName,
+                message.Content,
+                message.SentAt),
+            cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
-        try
+        foreach (var notification in notifications)
         {
-            await eventPublisher.PublishNewMessageAsync(
-                new NewMessageNotificationEvent(
-                    conversationId,
-                    message.Id,
-                    userId,
-                    senderName,
-                    message.Content,
-                    message.SentAt),
-                cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(
-                exception,
-                "RabbitMQ event failed after message {MessageId} was saved.",
-                message.Id);
+            try
+            {
+                await notificationService.PushAsync(notification, cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(
+                    exception,
+                    "SignalR notification {NotificationId} failed after message {MessageId} was committed.",
+                    notification.Id,
+                    message.Id);
+            }
         }
 
         return new MessageResponse(

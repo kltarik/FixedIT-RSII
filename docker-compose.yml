@@ -51,7 +51,8 @@ services:
       RabbitMQ__ConnectionRetrySeconds: "${RABBITMQ_CONNECTION_RETRY_SECONDS}"
       RabbitMQ__PrefetchCount: "${RABBITMQ_PREFETCH_COUNT}"
       RabbitMQ__PublishConfirmTimeoutSeconds: "${RABBITMQ_PUBLISH_CONFIRM_TIMEOUT_SECONDS}"
-      RabbitMQ__ProcessedMessageCacheSize: "${RABBITMQ_PROCESSED_MESSAGE_CACHE_SIZE}"
+      RabbitMQ__OutboxPollingSeconds: "${RABBITMQ_OUTBOX_POLL_SECONDS}"
+      RabbitMQ__OutboxBatchSize: "${RABBITMQ_OUTBOX_BATCH_SIZE}"
       RabbitMQ__DeliveryRetryDelaysSeconds__0: "${RABBITMQ_RETRY_DELAY_0_SECONDS}"
       RabbitMQ__DeliveryRetryDelaysSeconds__1: "${RABBITMQ_RETRY_DELAY_1_SECONDS}"
       RabbitMQ__DeliveryRetryDelaysSeconds__2: "${RABBITMQ_RETRY_DELAY_2_SECONDS}"
@@ -63,6 +64,7 @@ services:
       Jwt__RefreshTokenExpiryDays: "${JWT_REFRESH_TOKEN_EXPIRY_DAYS}"
       Security__BCryptWorkFactor: "${SECURITY_BCRYPT_WORK_FACTOR}"
       Scheduling__TimeZoneId: "${SCHEDULING_TIME_ZONE_ID}"
+      Scheduling__SqlServerTimeZoneId: "${SCHEDULING_SQL_SERVER_TIME_ZONE_ID}"
       PayPal__ClientId: "${PAYPAL_CLIENT_ID}"
       PayPal__ClientSecret: "${PAYPAL_CLIENT_SECRET}"
       PayPal__BaseUrl: "${PAYPAL_BASE_URL}"
@@ -102,6 +104,7 @@ services:
       context: ./backend
       dockerfile: FixedIT.NotificationService/Dockerfile
     environment:
+      ConnectionStrings__DefaultConnection: "Server=${DB_HOST},${DB_PORT};Database=${DB_NAME};User Id=${DB_USER};Password=${DB_SA_PASSWORD};TrustServerCertificate=True"
       RabbitMQ__Host: "${RABBITMQ_HOST}"
       RabbitMQ__Port: "${RABBITMQ_PORT}"
       RabbitMQ__Username: "${RABBITMQ_USER}"
@@ -116,7 +119,8 @@ services:
       RabbitMQ__ConnectionRetrySeconds: "${RABBITMQ_CONNECTION_RETRY_SECONDS}"
       RabbitMQ__PrefetchCount: "${RABBITMQ_PREFETCH_COUNT}"
       RabbitMQ__PublishConfirmTimeoutSeconds: "${RABBITMQ_PUBLISH_CONFIRM_TIMEOUT_SECONDS}"
-      RabbitMQ__ProcessedMessageCacheSize: "${RABBITMQ_PROCESSED_MESSAGE_CACHE_SIZE}"
+      RabbitMQ__OutboxPollingSeconds: "${RABBITMQ_OUTBOX_POLL_SECONDS}"
+      RabbitMQ__OutboxBatchSize: "${RABBITMQ_OUTBOX_BATCH_SIZE}"
       RabbitMQ__DeliveryRetryDelaysSeconds__0: "${RABBITMQ_RETRY_DELAY_0_SECONDS}"
       RabbitMQ__DeliveryRetryDelaysSeconds__1: "${RABBITMQ_RETRY_DELAY_1_SECONDS}"
       RabbitMQ__DeliveryRetryDelaysSeconds__2: "${RABBITMQ_RETRY_DELAY_2_SECONDS}"
@@ -130,6 +134,8 @@ services:
       Smtp__FromName: "${SMTP_FROM_NAME}"
     restart: on-failure
     depends_on:
+      sqlserver:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       mailhog:

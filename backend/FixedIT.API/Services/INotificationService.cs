@@ -19,6 +19,8 @@ public interface INotificationService
         PagedRequest request,
         CancellationToken cancellationToken);
 
+    Task<int> GetUnreadCountAsync(string userId, CancellationToken cancellationToken);
+
     Task<NotificationResponse> MarkReadAsync(
         string userId,
         int notificationId,

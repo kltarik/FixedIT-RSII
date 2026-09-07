@@ -48,8 +48,11 @@ public sealed class RabbitMqOptions
     [Range(1, 120)]
     public int PublishConfirmTimeoutSeconds { get; set; }
 
-    [Range(100, 1_000_000)]
-    public int ProcessedMessageCacheSize { get; set; }
+    [Range(1, 300)]
+    public int OutboxPollingSeconds { get; set; }
+
+    [Range(1, 1_000)]
+    public int OutboxBatchSize { get; set; }
 
     [MinLength(1)]
     [MaxLength(10)]

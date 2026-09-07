@@ -1,8 +1,10 @@
 using FixedIT.NotificationService.Configuration;
 using FixedIT.NotificationService.Consumers;
+using FixedIT.NotificationService.Data;
 using FixedIT.NotificationService.Services;
 using FixedIT.Shared.Configuration;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
 using RabbitMQ.Client;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -16,6 +18,15 @@ builder.Services
         options => options.DeliveryRetryDelaysSeconds.All(delay => delay is >= 1 and <= 300),
         "RabbitMQ:DeliveryRetryDelaysSeconds mora sadržavati vrijednosti od 1 do 300 sekundi.")
     .ValidateOnStart();
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException("ConnectionStrings:DefaultConnection mora biti konfigurisan.");
+}
+
+builder.Services.AddDbContext<NotificationDbContext>(options =>
+    options.UseSqlServer(connectionString));
+builder.Services.AddScoped<NotificationInbox>();
 builder.Services
     .AddOptions<SmtpOptions>()
     .Bind(builder.Configuration.GetSection(SmtpOptions.SectionName))
@@ -40,7 +51,6 @@ builder.Services.AddSingleton<IConnectionFactory>(serviceProvider =>
         DispatchConsumersAsync = true
     };
 });
-builder.Services.AddSingleton<ProcessedMessageCache>();
 builder.Services.AddSingleton<IEmailService, EmailService>();
 builder.Services.AddHostedService<NotificationConsumer>();
 

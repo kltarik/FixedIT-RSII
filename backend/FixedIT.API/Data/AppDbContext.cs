@@ -1,6 +1,7 @@
 using FixedIT.API.Constants;
 using FixedIT.API.Models;
 using FixedIT.API.Models.Enums;
+using FixedIT.Shared.Messages;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,6 +34,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<RecommendationActivity> RecommendationActivities => Set<RecommendationActivity>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<ProcessedNotificationMessage> ProcessedNotificationMessages =>
+        Set<ProcessedNotificationMessage>();
 
     protected override void ConfigureConventions(
         ModelConfigurationBuilder configurationBuilder)
@@ -54,6 +58,34 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         ConfigureReservations(builder);
         ConfigureCommunication(builder);
         ConfigureOperationalData(builder);
+        ConfigureMessaging(builder);
+    }
+
+    private static void ConfigureMessaging(ModelBuilder builder)
+    {
+        builder.Entity<OutboxMessage>(entity =>
+        {
+            entity.HasKey(message => message.Id);
+            entity.Property(message => message.MessageType)
+                .HasMaxLength(DatabaseConstants.NameMaxLength)
+                .IsRequired();
+            entity.Property(message => message.Payload).IsRequired();
+            entity.Property(message => message.OccurredAt).HasColumnType("datetime2");
+            entity.Property(message => message.CreatedAt).HasColumnType("datetime2");
+            entity.Property(message => message.PublishedAt).HasColumnType("datetime2");
+            entity.Property(message => message.NextAttemptAt).HasColumnType("datetime2");
+            entity.Property(message => message.LastError)
+                .HasMaxLength(DatabaseConstants.DescriptionMaxLength);
+            entity.HasIndex(message => new { message.PublishedAt, message.NextAttemptAt });
+        });
+
+        builder.Entity<ProcessedNotificationMessage>(entity =>
+        {
+            entity.ToTable("ProcessedNotificationMessages");
+            entity.HasKey(message => message.MessageId);
+            entity.Property(message => message.ReceivedAt).HasColumnType("datetime2");
+            entity.Property(message => message.ProcessedAt).HasColumnType("datetime2");
+        });
     }
 
     private static void ConfigureUser(ModelBuilder builder)
@@ -555,6 +587,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
                 .WithMany(reservation => reservation.StatusHistory)
                 .HasForeignKey(history => history.ReservationId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(history => history.PreviousStatusDefinition)
+                .WithMany()
+                .HasForeignKey(history => history.PreviousStatus)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(history => history.NewStatusDefinition)
+                .WithMany()
+                .HasForeignKey(history => history.NewStatus)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<PasswordResetToken>(entity =>

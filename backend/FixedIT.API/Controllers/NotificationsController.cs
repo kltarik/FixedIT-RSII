@@ -24,6 +24,14 @@ public sealed class NotificationsController(INotificationService notificationSer
             cancellationToken));
     }
 
+    [HttpGet("unread-count")]
+    public async Task<ActionResult<int>> GetUnreadCount(CancellationToken cancellationToken)
+    {
+        return Ok(await notificationService.GetUnreadCountAsync(
+            User.GetUserId(),
+            cancellationToken));
+    }
+
     [HttpPut("{id:int}/read")]
     public async Task<ActionResult<NotificationResponse>> MarkRead(
         int id,

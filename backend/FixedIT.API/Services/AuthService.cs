@@ -20,8 +20,7 @@ public sealed class AuthService(
     UserManager<User> userManager,
     IJwtService jwtService,
     IOptions<JwtOptions> jwtOptions,
-    INotificationEventPublisher notificationPublisher,
-    ILogger<AuthService> logger) : IAuthService
+    INotificationEventPublisher notificationPublisher) : IAuthService
 {
     private const string InvalidCredentialsMessage = "Email adresa ili lozinka nisu ispravni.";
     private readonly JwtOptions _jwtOptions = jwtOptions.Value;
@@ -177,26 +176,16 @@ public sealed class AuthService(
             ExpiresAt = now.AddMinutes(15)
         };
         db.PasswordResetTokens.Add(token);
+        await notificationPublisher.PublishPasswordResetAsync(
+            new PasswordResetRequestedEvent(
+                user.Id,
+                user.Email,
+                $"{user.FirstName} {user.LastName}".Trim(),
+                code,
+                token.ExpiresAt),
+            cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-
-        try
-        {
-            await notificationPublisher.PublishPasswordResetAsync(
-                new PasswordResetRequestedEvent(
-                    user.Id,
-                    user.Email,
-                    $"{user.FirstName} {user.LastName}".Trim(),
-                    code,
-                    token.ExpiresAt),
-                cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(exception, "Kod za promjenu lozinke nije moguće poslati korisniku {UserId}.", user.Id);
-            throw new ServiceUnavailableException(
-                "Kod za promjenu lozinke trenutno nije moguće poslati. Pokušajte ponovo.");
-        }
     }
 
     public async Task ResetPasswordAsync(

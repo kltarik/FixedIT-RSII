@@ -175,9 +175,10 @@ class RealtimeNotifications extends ChangeNotifier {
         break;
       }
     }
+    final previousUnreadCount = unreadCount;
     items = [item, ...items.where((e) => e.id != item.id)];
     if (!item.isRead && (previous == null || previous.isRead)) {
-      _serverUnreadCount = unreadCount + 1;
+      _serverUnreadCount = previousUnreadCount + 1;
     }
     notifyListeners();
     if (_localNotificationsReady) {

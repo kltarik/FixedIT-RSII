@@ -229,14 +229,31 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
 
   Future<void> _cancel() async {
     final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
     final reason = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Razlog otkazivanja'),
-        content: TextField(
-          controller: controller,
-          maxLines: 3,
-          decoration: const InputDecoration(labelText: 'Razlog'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            minLines: 3,
+            maxLines: 5,
+            maxLength: 500,
+            decoration: const InputDecoration(
+              labelText: 'Razlog',
+              helperText: 'Obavezno, najviše 500 znakova.',
+            ),
+            validator: (value) {
+              final normalized = value?.trim() ?? '';
+              if (normalized.isEmpty) return 'Razlog otkazivanja je obavezan.';
+              if (normalized.length > 500) {
+                return 'Razlog ne može biti duži od 500 znakova.';
+              }
+              return null;
+            },
+          ),
         ),
         actions: [
           TextButton(
@@ -245,7 +262,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
           ),
           FilledButton(
             onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
+              if (formKey.currentState!.validate()) {
                 Navigator.pop(context, controller.text.trim());
               }
             },

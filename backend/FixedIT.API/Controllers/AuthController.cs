@@ -32,11 +32,12 @@ public sealed class AuthController(
     }
 
     [AllowAnonymous]
-    [HttpGet("register/options")]
-    public async Task<ActionResult<ReferenceDataResponse>> GetRegistrationOptions(
+    [HttpGet("register/cities")]
+    public async Task<ActionResult<PagedResponse<CityOptionResponse>>> GetRegistrationCities(
+        [FromQuery] PagedRequest request,
         CancellationToken cancellationToken)
     {
-        return Ok(await referenceDataService.GetAsync(cancellationToken));
+        return Ok(await referenceDataService.GetCityOptionsAsync(request, cancellationToken));
     }
 
     [AllowAnonymous]

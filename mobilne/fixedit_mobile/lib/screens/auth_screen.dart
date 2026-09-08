@@ -422,12 +422,8 @@ class _RegisterFormState extends State<_RegisterForm> {
               TextFormField(
                 controller: password,
                 obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Lozinka (min. 8 znakova)',
-                ),
-                validator: (v) => (v?.length ?? 0) < 8
-                    ? 'Lozinka mora imati najmanje 8 znakova.'
-                    : null,
+                decoration: const InputDecoration(labelText: 'Lozinka'),
+                validator: _passwordValidator,
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(

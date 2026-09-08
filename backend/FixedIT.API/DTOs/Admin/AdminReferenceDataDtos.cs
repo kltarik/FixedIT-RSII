@@ -67,7 +67,23 @@ public sealed class UpdateReservationStatusDefinitionRequest
     public string Description { get; set; } = string.Empty;
 }
 
+public sealed class SaveReservationStatusDefinitionRequest
+{
+    [Required]
+    [EnumDataType(typeof(ReservationStatus))]
+    public ReservationStatus? Id { get; set; }
+
+    [Required]
+    [MaxLength(DatabaseConstants.NameMaxLength)]
+    public string Name { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(DatabaseConstants.DescriptionMaxLength)]
+    public string Description { get; set; } = string.Empty;
+}
+
 public sealed record ReservationStatusDefinitionResponse(
     int Id,
     string Name,
-    string Description);
+    string Description,
+    bool IsActive);

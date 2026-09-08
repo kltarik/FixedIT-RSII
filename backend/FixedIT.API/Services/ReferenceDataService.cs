@@ -1,5 +1,4 @@
 using FixedIT.API.CustomExceptions;
-using FixedIT.API.Configuration;
 using FixedIT.API.Data;
 using FixedIT.API.DTOs.Admin;
 using FixedIT.API.DTOs.Common;
@@ -7,51 +6,39 @@ using FixedIT.API.Models;
 using FixedIT.API.Models.Enums;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace FixedIT.API.Services;
 
 public sealed class ReferenceDataService(
     AppDbContext db,
-    IPaginationService paginationService,
-    IOptions<PaginationOptions> paginationOptions) : IReferenceDataService
+    IPaginationService paginationService) : IReferenceDataService
 {
-    private readonly int _maximumOptionCount = paginationOptions.Value.MaxPageSize;
-
-    public async Task<ReferenceDataResponse> GetAsync(CancellationToken cancellationToken)
+    public Task<PagedResponse<CityOptionResponse>> GetCityOptionsAsync(
+        PagedRequest request,
+        CancellationToken cancellationToken)
     {
-        var cities = await db.Cities
+        return PageAsync(
+            db.Cities
             .AsNoTracking()
             .OrderBy(city => city.Name)
-            .ThenBy(city => city.Id)
-            .Take(_maximumOptionCount)
-            .Select(city => new CityOptionResponse(city.Id, city.Name, city.CountryId))
-            .ToArrayAsync(cancellationToken);
-        var categories = await db.Categories
+            .ThenBy(city => city.Id),
+            request,
+            city => new CityOptionResponse(city.Id, city.Name, city.CountryId),
+            cancellationToken);
+    }
+
+    public Task<PagedResponse<ReferenceOptionResponse>> GetCategoryOptionsAsync(
+        PagedRequest request,
+        CancellationToken cancellationToken)
+    {
+        return PageAsync(
+            db.Categories
             .AsNoTracking()
             .OrderBy(category => category.Name)
-            .ThenBy(category => category.Id)
-            .Take(_maximumOptionCount)
-            .Select(category => new ReferenceOptionResponse(category.Id, category.Name))
-            .ToArrayAsync(cancellationToken);
-        var countries = await db.Countries
-            .AsNoTracking()
-            .OrderBy(country => country.Name)
-            .ThenBy(country => country.Id)
-            .Take(_maximumOptionCount)
-            .Select(country => new CountryOptionResponse(country.Id, country.Name, country.Code))
-            .ToArrayAsync(cancellationToken);
-        var statuses = await db.ReservationStatusDefinitions
-            .AsNoTracking()
-            .OrderBy(status => status.Id)
-            .Take(_maximumOptionCount)
-            .Select(status => new ReservationStatusOptionResponse(
-                (int)status.Id,
-                status.Name,
-                status.Description))
-            .ToArrayAsync(cancellationToken);
-
-        return new ReferenceDataResponse(cities, categories, countries, statuses);
+            .ThenBy(category => category.Id),
+            request,
+            category => new ReferenceOptionResponse(category.Id, category.Name),
+            cancellationToken);
     }
 
     public Task<PagedResponse<CountryResponse>> GetCountriesAsync(
@@ -265,8 +252,34 @@ public sealed class ReferenceDataService(
             .Select(status => new ReservationStatusDefinitionResponse(
                 (int)status.Id,
                 status.Name,
-                status.Description))
+                status.Description,
+                status.IsActive))
             .ToArrayAsync(cancellationToken);
+    }
+
+    public async Task<ReservationStatusDefinitionResponse> CreateReservationStatusAsync(
+        SaveReservationStatusDefinitionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var statusId = request.Id!.Value;
+        var status = await db.ReservationStatusDefinitions
+            .SingleOrDefaultAsync(item => item.Id == statusId, cancellationToken);
+        if (status is { IsActive: true })
+        {
+            throw new BusinessException("Status rezervacije s ovom šifrom već postoji.");
+        }
+
+        if (status is null)
+        {
+            status = new ReservationStatusDefinition { Id = statusId };
+            db.ReservationStatusDefinitions.Add(status);
+        }
+
+        status.Name = RequiredText(request.Name, "Naziv statusa");
+        status.Description = RequiredText(request.Description, "Opis statusa");
+        status.IsActive = true;
+        await db.SaveChangesAsync(cancellationToken);
+        return MapReservationStatus(status);
     }
 
     public async Task<ReservationStatusDefinitionResponse> UpdateReservationStatusAsync(
@@ -286,7 +299,24 @@ public sealed class ReferenceDataService(
         status.Name = RequiredText(request.Name, "Naziv statusa");
         status.Description = RequiredText(request.Description, "Opis statusa");
         await db.SaveChangesAsync(cancellationToken);
-        return new ReservationStatusDefinitionResponse((int)status.Id, status.Name, status.Description);
+        return MapReservationStatus(status);
+    }
+
+    public async Task DeleteReservationStatusAsync(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        if (!Enum.IsDefined(typeof(ReservationStatus), id))
+        {
+            throw new NotFoundException("Status rezervacije nije pronađen.");
+        }
+
+        var statusId = (ReservationStatus)id;
+        var status = await db.ReservationStatusDefinitions
+            .SingleOrDefaultAsync(item => item.Id == statusId, cancellationToken)
+            ?? throw new NotFoundException("Status rezervacije nije pronađen.");
+        status.IsActive = false;
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<PagedResponse<TResponse>> PageAsync<TEntity, TResponse>(
@@ -326,6 +356,13 @@ public sealed class ReferenceDataService(
         category.Name,
         category.Description,
         category.IconUrl);
+
+    private static ReservationStatusDefinitionResponse MapReservationStatus(
+        ReservationStatusDefinition status) => new(
+            (int)status.Id,
+            status.Name,
+            status.Description,
+            status.IsActive);
 
     private static string RequiredText(string value, string fieldName)
     {

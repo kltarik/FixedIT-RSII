@@ -11,10 +11,19 @@ namespace FixedIT.API.Controllers;
 public sealed class ReferenceDataController(IReferenceDataService referenceDataService)
     : ControllerBase
 {
-    [HttpGet]
-    public async Task<ActionResult<ReferenceDataResponse>> Get(
+    [HttpGet("cities")]
+    public async Task<ActionResult<PagedResponse<CityOptionResponse>>> GetCities(
+        [FromQuery] PagedRequest request,
         CancellationToken cancellationToken)
     {
-        return Ok(await referenceDataService.GetAsync(cancellationToken));
+        return Ok(await referenceDataService.GetCityOptionsAsync(request, cancellationToken));
+    }
+
+    [HttpGet("categories")]
+    public async Task<ActionResult<PagedResponse<ReferenceOptionResponse>>> GetCategories(
+        [FromQuery] PagedRequest request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await referenceDataService.GetCategoryOptionsAsync(request, cancellationToken));
     }
 }

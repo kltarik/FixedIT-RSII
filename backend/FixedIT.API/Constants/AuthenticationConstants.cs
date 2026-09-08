@@ -22,6 +22,11 @@ public static class CorsPolicyNames
     public const string FixedIT = "FixedITPolicy";
 }
 
+public static class RateLimitPolicyNames
+{
+    public const string PasswordReset = "PasswordReset";
+}
+
 public static class ConfigurationSectionNames
 {
     public const string AllowedOrigins = "AllowedOrigins";

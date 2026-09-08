@@ -14,6 +14,7 @@ using FixedIT.Shared.Configuration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
@@ -21,6 +22,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using RabbitMQ.Client;
 using QuestPDF.Infrastructure;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +33,29 @@ builder.Services.AddControllers(options =>
     options.Filters.AddService<AuditLogActionFilter>(order: -3000));
 builder.Services.AddHealthChecks();
 builder.Services.AddSignalR();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(
+        RateLimitPolicyNames.PasswordReset,
+        httpContext =>
+        {
+            var security = httpContext.RequestServices
+                .GetRequiredService<IOptions<SecurityOptions>>()
+                .Value;
+            var address = httpContext.Connection.RemoteIpAddress?.ToString() ?? "nepoznato";
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: address,
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = security.PasswordResetIpPermitLimit,
+                    Window = TimeSpan.FromMinutes(security.PasswordResetIpWindowMinutes),
+                    QueueLimit = 0,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    AutoReplenishment = true
+                });
+        });
+});
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
@@ -338,6 +363,7 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseCors(CorsPolicyNames.FixedIT);
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapControllers();
 app.MapHealthChecks("/health");

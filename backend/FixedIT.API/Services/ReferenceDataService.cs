@@ -41,6 +41,20 @@ public sealed class ReferenceDataService(
             cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<ReservationStatusOptionResponse>> GetActiveReservationStatusOptionsAsync(
+        CancellationToken cancellationToken)
+    {
+        return await db.ReservationStatusDefinitions
+            .AsNoTracking()
+            .Where(status => status.IsActive)
+            .OrderBy(status => status.Id)
+            .Select(status => new ReservationStatusOptionResponse(
+                (int)status.Id,
+                status.Name,
+                status.Description))
+            .ToArrayAsync(cancellationToken);
+    }
+
     public Task<PagedResponse<CountryResponse>> GetCountriesAsync(
         ReferenceDataFilterRequest filters,
         PagedRequest request,

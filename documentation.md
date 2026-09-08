@@ -143,9 +143,12 @@ Osnovna adresa u Docker okruženju je `http://localhost:5000`. Za zaštićene ru
 | POST | `/api/auth/login` | javno | Prijava i izdavanje access/refresh tokena |
 | POST | `/api/auth/refresh` | refresh token | Rotacija tokena |
 | POST | `/api/auth/logout` | prijavljen | Opoziv aktivnih refresh tokena |
-| POST | `/api/auth/forgot-password` | javno | Slanje vremenski ograničenog koda za reset lozinke |
-| POST | `/api/auth/reset-password` | javno | Postavljanje nove lozinke uz važeći reset kod |
-| GET | `/api/reference-data` | javno | Gradovi i kategorije za forme i filtere |
+| POST | `/api/auth/forgot-password` | javno, ograničena učestalost | Slanje vremenski ograničenog koda za reset lozinke |
+| POST | `/api/auth/reset-password` | javno, ograničena učestalost | Postavljanje nove lozinke uz važeći reset kod |
+| GET | `/api/auth/register/cities` | javno | Straničeni gradovi za registraciju |
+| GET | `/api/reference-data/cities` | prijavljen | Straničeni gradovi za forme i filtere |
+| GET | `/api/reference-data/categories` | prijavljen | Straničene kategorije za forme i filtere |
+| GET | `/api/reference-data/reservation-statuses` | prijavljen | Aktivni sistemski statusi rezervacija |
 
 ### 6.2 Korisnici i profesionalci
 
@@ -235,7 +238,7 @@ SignalR endpointi su `/hubs/chat` i `/hubs/notifications`. Chat hub izlaže `Joi
 | GET/POST/PUT/DELETE | `/api/admin/reference-data/countries` | administrator | CRUD država |
 | GET/POST/PUT/DELETE | `/api/admin/reference-data/cities` | administrator | CRUD gradova |
 | GET/POST/PUT/DELETE | `/api/admin/reference-data/categories` | administrator | CRUD kategorija |
-| GET/PUT | `/api/admin/reference-data/reservation-statuses` | administrator | Pregled i izmjena statusnih šifrarnika |
+| GET/POST/PUT/DELETE | `/api/admin/reference-data/reservation-statuses` | administrator | Pregled, izmjena, deaktivacija i reaktivacija sistemskih statusa |
 | GET | `/api/admin/stats` | administrator | Agregatna statistika platforme |
 | GET | `/api/admin/audit-logs` | administrator | Straničena i filtrirana evidencija aktivnosti |
 | GET | `/api/reports/financial` | administrator/profesionalac | Finansijski podaci po periodu i kategoriji |
@@ -247,11 +250,12 @@ SignalR endpointi su `/hubs/chat` i `/hubs/notifications`. Chat hub izlaže `Joi
 
 - ASP.NET Core Identity koristi BCrypt hashiranje i jedinstvene email adrese.
 - JWT access token i rotirajući, hashirani refresh tokeni odvajaju kratku sesiju od dugotrajne prijave.
+- Reset lozinke koristi kriptografski generisan šestocifreni kod koji vrijedi 15 minuta. Endpointi su ograničeni po IP adresi, a izdani kod se zaključava nakon pet pogrešnih pokušaja.
 - Kontroleri primjenjuju role/policy autorizaciju, a servisi provjeravaju vlasništvo resursa.
 - Upload prihvata samo JPG/PNG, provjerava deklarisani MIME tip, ekstenziju, magic bytes i maksimalnu veličinu.
 - PayPal API se poziva preko `IHttpClientFactory`; create/capture/refund tok provjerava iznose i vanjske identifikatore.
 - PayPal webhook se prihvata samo nakon uspješne provjere potpisa; neuspješna provjera vraća 401.
-- RabbitMQ koristi publisher potvrde, durable red, dead-letter red, ograničen prefetch i idempotentnu obradu poruka. Worker ponavlja privremeno neuspjelu dostavu nakon 1, 2, 4 i 8 sekundi prije slanja u DLQ.
+- RabbitMQ koristi publisher potvrde, durable red, dead-letter red, ograničen prefetch i inbox evidenciju obrađenih poruka. Worker ponavlja privremeno neuspjelu dostavu nakon 1, 2, 4 i 8 sekundi prije slanja u DLQ. SMTP nema transakciju s bazom niti ugovor o idempotentnosti, pa isporuka ima at-least-once semantiku i u rijetkom prekidu procesa neposredno nakon SMTP prihvata može nastati duplikat; stabilni `Message-Id` omogućava provideru da ga prepozna.
 - SignalR isporučuje chat i obavijesti u stvarnom vremenu.
 - Audit filter bilježi POST/PUT/DELETE akcije bez osjetljivog sadržaja zahtjeva.
 - Globalni middleware vraća sigurne bosanske poruke i `traceId`, bez stack tracea.

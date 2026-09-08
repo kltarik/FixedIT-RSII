@@ -7,6 +7,7 @@ public interface IReferenceDataService
 {
     Task<PagedResponse<CityOptionResponse>> GetCityOptionsAsync(PagedRequest request, CancellationToken cancellationToken);
     Task<PagedResponse<ReferenceOptionResponse>> GetCategoryOptionsAsync(PagedRequest request, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<ReservationStatusOptionResponse>> GetActiveReservationStatusOptionsAsync(CancellationToken cancellationToken);
 
     Task<PagedResponse<CountryResponse>> GetCountriesAsync(ReferenceDataFilterRequest filters, PagedRequest request, CancellationToken cancellationToken);
     Task<CountryResponse> CreateCountryAsync(SaveCountryRequest request, CancellationToken cancellationToken);

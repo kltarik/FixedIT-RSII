@@ -46,6 +46,15 @@ public sealed class ReservationStateService(
             throw new NotFoundException("Rezervacija nije pronađena.");
         }
 
+        var destinationIsActive = await db.ReservationStatusDefinitions
+            .AnyAsync(
+                status => status.Id == newStatus && status.IsActive,
+                cancellationToken);
+        if (!destinationIsActive)
+        {
+            throw new BusinessException("Odabrani status rezervacije je trenutno onemogućen.");
+        }
+
         ValidateTransition(
             reservation.Status,
             newStatus,
@@ -260,11 +269,11 @@ public sealed class ReservationStateService(
 
     private static string StatusName(ReservationStatus status) => status switch
     {
-        ReservationStatus.Pending    => "Na čekanju",
-        ReservationStatus.Accepted   => "Prihvaćena",
+        ReservationStatus.Pending => "Na čekanju",
+        ReservationStatus.Accepted => "Prihvaćena",
         ReservationStatus.InProgress => "U toku",
-        ReservationStatus.Completed  => "Završena",
-        ReservationStatus.Cancelled  => "Otkazana",
-        _                            => status.ToString()
+        ReservationStatus.Completed => "Završena",
+        ReservationStatus.Cancelled => "Otkazana",
+        _ => status.ToString()
     };
 }

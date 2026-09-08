@@ -54,6 +54,7 @@ public sealed class ReservationService(
         await using var transaction = await db.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
             cancellationToken);
+        await EnsureStatusIsActiveAsync(ReservationStatus.Pending, cancellationToken);
         var professional = await db.ProfessionalProfiles
             .FromSqlRaw(LockedProfessionalProfilesSql)
             .Include(profile => profile.User)
@@ -279,6 +280,7 @@ public sealed class ReservationService(
         AvailableSlotsRequest request,
         CancellationToken cancellationToken)
     {
+        await EnsureStatusIsActiveAsync(ReservationStatus.Pending, cancellationToken);
         var now = DateTime.UtcNow;
         var localToday = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(
             now,
@@ -344,6 +346,18 @@ public sealed class ReservationService(
         }
 
         return slots;
+    }
+
+    private async Task EnsureStatusIsActiveAsync(
+        ReservationStatus status,
+        CancellationToken cancellationToken)
+    {
+        if (!await db.ReservationStatusDefinitions.AnyAsync(
+                item => item.Id == status && item.IsActive,
+                cancellationToken))
+        {
+            throw new BusinessException("Kreiranje novih rezervacija je trenutno onemogućeno.");
+        }
     }
 
     private DateTime ConvertLocalToUtc(DateOnly date, TimeOnly time) =>

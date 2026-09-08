@@ -27,6 +27,18 @@ class MobileRepository {
     return ReferenceData(cities, const []);
   }
 
+  Future<Set<int>> getActiveReservationStatusIds() async {
+    final response = await api.call<List<dynamic>>(
+      () => api.dio.get<List<dynamic>>(
+        '/api/reference-data/reservation-statuses',
+      ),
+    );
+    return (response.data ?? const <dynamic>[])
+        .whereType<Map>()
+        .map((item) => jInt(Map<String, dynamic>.from(item), 'id'))
+        .toSet();
+  }
+
   Future<List<LookupOption>> _getAllOptions(String path) async {
     final items = <LookupOption>[];
     var page = 1;

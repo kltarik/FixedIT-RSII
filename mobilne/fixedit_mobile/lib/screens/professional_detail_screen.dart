@@ -18,6 +18,7 @@ class ProfessionalDetailScreen extends StatefulWidget {
 class _ProfessionalDetailScreenState extends State<ProfessionalDetailScreen> {
   Professional? professional;
   Paged<Review>? reviews;
+  Set<int> activeStatusIds = const <int>{};
   String? error;
   @override
   void initState() {
@@ -31,11 +32,13 @@ class _ProfessionalDetailScreenState extends State<ProfessionalDetailScreen> {
       final values = await Future.wait<Object>([
         repo.getProfessional(widget.professionalId),
         repo.getReviews(widget.professionalId),
+        repo.getActiveReservationStatusIds(),
       ]);
       if (mounted) {
         setState(() {
           professional = values[0] as Professional;
           reviews = values[1] as Paged<Review>;
+          activeStatusIds = values[2] as Set<int>;
         });
       }
     } catch (e) {
@@ -55,7 +58,7 @@ class _ProfessionalDetailScreenState extends State<ProfessionalDetailScreen> {
     final client = context.read<AuthService>().user?.isClient == true;
     return Scaffold(
       appBar: AppBar(title: Text(p.name)),
-      floatingActionButton: client
+      floatingActionButton: client && activeStatusIds.contains(1)
           ? FloatingActionButton.extended(
               onPressed: () => _reserve(p),
               icon: const Icon(Icons.calendar_month),

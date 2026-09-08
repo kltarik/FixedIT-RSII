@@ -17,6 +17,7 @@ class ReservationDetailScreen extends StatefulWidget {
 
 class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
   Reservation? item;
+  Set<int>? activeStatusIds;
   String? error;
   bool busy = false;
   @override
@@ -27,12 +28,15 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
 
   Future<void> load() async {
     try {
-      final value = await context.read<MobileRepository>().getReservation(
-        widget.reservationId,
-      );
+      final repository = context.read<MobileRepository>();
+      final values = await Future.wait<Object>([
+        repository.getReservation(widget.reservationId),
+        repository.getActiveReservationStatusIds(),
+      ]);
       if (mounted) {
         setState(() {
-          item = value;
+          item = values[0] as Reservation;
+          activeStatusIds = values[1] as Set<int>;
           error = null;
         });
       }
@@ -148,13 +152,14 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
 
   List<Widget> _actions(Reservation r, bool professional) {
     final actions = <Widget>[];
-    if (professional && r.status == 1) {
+    final activeStatuses = activeStatusIds ?? const <int>{};
+    if (professional && r.status == 1 && activeStatuses.contains(2)) {
       actions.add(_action('Prihvati rezervaciju', 'accept', Icons.check));
     }
-    if (professional && r.status == 2) {
+    if (professional && r.status == 2 && activeStatuses.contains(3)) {
       actions.add(_action('Započni rad', 'start', Icons.play_arrow));
     }
-    if (professional && r.status == 3) {
+    if (professional && r.status == 3 && activeStatuses.contains(4)) {
       actions.add(_action('Označi završeno', 'complete', Icons.task_alt));
     }
     if (!professional && r.status == 4 && !r.isPaid) {
@@ -189,7 +194,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
       );
     }
     final canCancel = r.status == 1 || r.status == 2;
-    if (canCancel) {
+    if (canCancel && activeStatuses.contains(5)) {
       actions.add(
         Padding(
           padding: const EdgeInsets.only(top: 8),

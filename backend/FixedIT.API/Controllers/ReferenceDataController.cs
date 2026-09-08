@@ -26,4 +26,12 @@ public sealed class ReferenceDataController(IReferenceDataService referenceDataS
     {
         return Ok(await referenceDataService.GetCategoryOptionsAsync(request, cancellationToken));
     }
+
+    [HttpGet("reservation-statuses")]
+    public async Task<ActionResult<IReadOnlyCollection<ReservationStatusOptionResponse>>> GetReservationStatuses(
+        CancellationToken cancellationToken)
+    {
+        return Ok(await referenceDataService.GetActiveReservationStatusOptionsAsync(
+            cancellationToken));
+    }
 }

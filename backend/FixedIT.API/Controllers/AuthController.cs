@@ -7,6 +7,7 @@ using FixedIT.API.Extensions;
 using FixedIT.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
 namespace FixedIT.API.Controllers;
@@ -75,6 +76,7 @@ public sealed class AuthController(
 
     [AllowAnonymous]
     [HttpPost("forgot-password")]
+    [EnableRateLimiting(RateLimitPolicyNames.PasswordReset)]
     public async Task<ActionResult<ForgotPasswordResponse>> ForgotPassword(
         ForgotPasswordRequest request,
         CancellationToken cancellationToken)
@@ -86,6 +88,7 @@ public sealed class AuthController(
 
     [AllowAnonymous]
     [HttpPost("reset-password")]
+    [EnableRateLimiting(RateLimitPolicyNames.PasswordReset)]
     public async Task<IActionResult> ResetPassword(
         ResetPasswordRequest request,
         CancellationToken cancellationToken)

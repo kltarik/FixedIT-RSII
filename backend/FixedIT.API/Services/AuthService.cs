@@ -20,10 +20,13 @@ public sealed class AuthService(
     UserManager<User> userManager,
     IJwtService jwtService,
     IOptions<JwtOptions> jwtOptions,
+    IOptions<SecurityOptions> securityOptions,
     INotificationEventPublisher notificationPublisher) : IAuthService
 {
     private const string InvalidCredentialsMessage = "Email adresa ili lozinka nisu ispravni.";
+    private const string InvalidResetCodeMessage = "Kod za promjenu lozinke nije ispravan ili je istekao.";
     private readonly JwtOptions _jwtOptions = jwtOptions.Value;
+    private readonly SecurityOptions _securityOptions = securityOptions.Value;
 
     public async Task<AuthResponse> RegisterAsync(
         RegisterRequest request,
@@ -199,20 +202,39 @@ public sealed class AuthService(
         var user = await db.Users
             .IgnoreQueryFilters()
             .SingleOrDefaultAsync(item => item.NormalizedEmail == normalizedEmail, cancellationToken)
-            ?? throw new BusinessException("Kod za promjenu lozinke nije ispravan ili je istekao.");
+            ?? throw new BusinessException(InvalidResetCodeMessage);
         if (!user.IsActive)
         {
-            throw new BusinessException("Kod za promjenu lozinke nije ispravan ili je istekao.");
+            throw new BusinessException(InvalidResetCodeMessage);
         }
         var now = DateTime.UtcNow;
         var hash = HashResetCode(user.Id, request.Code);
-        var token = await db.PasswordResetTokens.SingleOrDefaultAsync(
+        var token = await db.PasswordResetTokens
+            .Where(
             item => item.UserId == user.Id
-                && item.TokenHash == hash
                 && item.UsedAt == null
-                && item.ExpiresAt > now,
-            cancellationToken)
-            ?? throw new BusinessException("Kod za promjenu lozinke nije ispravan ili je istekao.");
+                && item.ExpiresAt > now)
+            .OrderByDescending(item => item.CreatedAt)
+            .ThenByDescending(item => item.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (token is null
+            || token.FailedAttempts >= _securityOptions.PasswordResetMaxFailedAttempts)
+        {
+            throw new BusinessException(InvalidResetCodeMessage);
+        }
+
+        if (!FixedTimeEqualsHex(token.TokenHash, hash))
+        {
+            token.FailedAttempts++;
+            if (token.FailedAttempts >= _securityOptions.PasswordResetMaxFailedAttempts)
+            {
+                token.UsedAt = now;
+            }
+
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            throw new BusinessException(InvalidResetCodeMessage);
+        }
 
         var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
         EnsureSucceeded(await userManager.ResetPasswordAsync(user, resetToken, request.NewPassword));
@@ -284,6 +306,20 @@ public sealed class AuthService(
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes($"{userId}:{code}"));
         return Convert.ToHexString(bytes);
+    }
+
+    private static bool FixedTimeEqualsHex(string left, string right)
+    {
+        try
+        {
+            return CryptographicOperations.FixedTimeEquals(
+                Convert.FromHexString(left),
+                Convert.FromHexString(right));
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 
     private static void EnsureSucceeded(IdentityResult result)

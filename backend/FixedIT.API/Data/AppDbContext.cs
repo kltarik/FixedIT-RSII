@@ -144,6 +144,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         builder.Entity<ReservationStatusDefinition>(entity =>
         {
+            entity.Property(status => status.IsActive).HasDefaultValue(true);
             entity.Property(status => status.Name)
                 .HasMaxLength(DatabaseConstants.NameMaxLength)
                 .IsRequired();

@@ -15,17 +15,34 @@ class MobileRepository {
   final ApiClient api;
 
   Future<ReferenceData> getReferenceData() async {
-    final r = await api.call<Json>(
-      () => api.dio.get<Json>('/api/reference-data'),
-    );
-    return ReferenceData.fromJson(r.data ?? const {});
+    final results = await Future.wait([
+      _getAllOptions('/api/reference-data/cities'),
+      _getAllOptions('/api/reference-data/categories'),
+    ]);
+    return ReferenceData(results[0], results[1]);
   }
 
   Future<ReferenceData> getRegistrationReferenceData() async {
-    final r = await api.call<Json>(
-      () => api.dio.get<Json>('/api/auth/register/options'),
-    );
-    return ReferenceData.fromJson(r.data ?? const {});
+    final cities = await _getAllOptions('/api/auth/register/cities');
+    return ReferenceData(cities, const []);
+  }
+
+  Future<List<LookupOption>> _getAllOptions(String path) async {
+    final items = <LookupOption>[];
+    var page = 1;
+    Paged<LookupOption> result;
+    do {
+      final response = await api.call<Json>(
+        () => api.dio.get<Json>(
+          path,
+          queryParameters: {'page': page, 'pageSize': 50},
+        ),
+      );
+      result = Paged.fromJson(response.data ?? const {}, LookupOption.fromJson);
+      items.addAll(result.items);
+      page++;
+    } while (page <= result.pageCount);
+    return items;
   }
 
   Future<HomeData> getHome({required bool client}) async {

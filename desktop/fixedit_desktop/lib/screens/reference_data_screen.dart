@@ -482,6 +482,65 @@ class _StatusesTabState extends State<_StatusesTab> {
     if (saved && mounted) await _load();
   }
 
+  Future<void> _add() async {
+    final inactive = _items!.where((status) => !status.isActive).toList();
+    if (inactive.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Svih pet sistemskih statusa je već aktivno.'),
+        ),
+      );
+      return;
+    }
+
+    var selected = inactive.first;
+    final name = TextEditingController(text: selected.name);
+    final description = TextEditingController(text: selected.description);
+    final saved = await _showForm(
+      context,
+      title: 'Dodaj status',
+      fields: [
+        DropdownButtonFormField<int>(
+          initialValue: selected.id,
+          decoration: const InputDecoration(labelText: 'Sistemska šifra'),
+          items: inactive
+              .map(
+                (status) => DropdownMenuItem(
+                  value: status.id,
+                  child: Text('${status.id} - ${status.name}'),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            selected = inactive.singleWhere((status) => status.id == value);
+            name.text = selected.name;
+            description.text = selected.description;
+          },
+        ),
+        TextFormField(
+          controller: name,
+          decoration: const InputDecoration(labelText: 'Naziv'),
+          validator: (value) => _requiredText(value, 'Naziv statusa', 100),
+        ),
+        TextFormField(
+          controller: description,
+          minLines: 2,
+          maxLines: 4,
+          decoration: const InputDecoration(labelText: 'Opis'),
+          validator: (value) => _requiredText(value, 'Opis statusa', 2000),
+        ),
+      ],
+      onSave: () => widget.repository.createReservationStatus(
+        id: selected.id,
+        name: name.text,
+        description: description.text,
+      ),
+    );
+    name.dispose();
+    description.dispose();
+    if (saved && mounted) await _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_error != null) return ErrorPanel(message: _error!, onRetry: _load);
@@ -498,15 +557,27 @@ class _StatusesTabState extends State<_StatusesTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextField(
-          controller: _search,
-          decoration: const InputDecoration(
-            labelText: 'Pretraži statuse',
-            prefixIcon: Icon(Icons.search),
-            helperText:
-                'Pet statusa je sastavni dio rezervacijskog procesa; moguće je uređivati njihove nazive i opise.',
-          ),
-          onChanged: (_) => setState(() {}),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _search,
+                decoration: const InputDecoration(
+                  labelText: 'Pretraži statuse',
+                  prefixIcon: Icon(Icons.search),
+                  helperText:
+                      'Sistemske šifre su nepromjenjive; brisanje sigurno deaktivira status.',
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(width: 12),
+            FilledButton.icon(
+              onPressed: _add,
+              icon: const Icon(Icons.add),
+              label: const Text('Dodaj'),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         Expanded(
@@ -519,6 +590,7 @@ class _StatusesTabState extends State<_StatusesTab> {
                     DataColumn(label: Text('Šifra')),
                     DataColumn(label: Text('Naziv')),
                     DataColumn(label: Text('Opis')),
+                    DataColumn(label: Text('Aktivan')),
                     DataColumn(label: Text('Akcije')),
                   ],
                   rows: visibleItems
@@ -534,10 +606,36 @@ class _StatusesTabState extends State<_StatusesTab> {
                               ),
                             ),
                             DataCell(
-                              IconButton(
-                                tooltip: 'Uredi',
-                                onPressed: () => _edit(status),
-                                icon: const Icon(Icons.edit_outlined),
+                              Icon(
+                                status.isActive
+                                    ? Icons.check_circle
+                                    : Icons.cancel,
+                                color: status.isActive
+                                    ? Colors.green
+                                    : Colors.grey,
+                              ),
+                            ),
+                            DataCell(
+                              Row(
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Uredi',
+                                    onPressed: () => _edit(status),
+                                    icon: const Icon(Icons.edit_outlined),
+                                  ),
+                                  if (status.isActive)
+                                    IconButton(
+                                      tooltip: 'Deaktiviraj',
+                                      onPressed: () => _deleteReference(
+                                        context,
+                                        'status ${status.name}',
+                                        () => widget.repository
+                                            .deleteReservationStatus(status.id),
+                                        _load,
+                                      ),
+                                      icon: const Icon(Icons.delete_outline),
+                                    ),
+                                ],
                               ),
                             ),
                           ],

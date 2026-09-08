@@ -5,7 +5,8 @@ namespace FixedIT.API.Services;
 
 public interface IReferenceDataService
 {
-    Task<ReferenceDataResponse> GetAsync(CancellationToken cancellationToken);
+    Task<PagedResponse<CityOptionResponse>> GetCityOptionsAsync(PagedRequest request, CancellationToken cancellationToken);
+    Task<PagedResponse<ReferenceOptionResponse>> GetCategoryOptionsAsync(PagedRequest request, CancellationToken cancellationToken);
 
     Task<PagedResponse<CountryResponse>> GetCountriesAsync(ReferenceDataFilterRequest filters, PagedRequest request, CancellationToken cancellationToken);
     Task<CountryResponse> CreateCountryAsync(SaveCountryRequest request, CancellationToken cancellationToken);
@@ -23,5 +24,7 @@ public interface IReferenceDataService
     Task DeleteCategoryAsync(int id, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<ReservationStatusDefinitionResponse>> GetReservationStatusesAsync(CancellationToken cancellationToken);
+    Task<ReservationStatusDefinitionResponse> CreateReservationStatusAsync(SaveReservationStatusDefinitionRequest request, CancellationToken cancellationToken);
     Task<ReservationStatusDefinitionResponse> UpdateReservationStatusAsync(int id, UpdateReservationStatusDefinitionRequest request, CancellationToken cancellationToken);
+    Task DeleteReservationStatusAsync(int id, CancellationToken cancellationToken);
 }

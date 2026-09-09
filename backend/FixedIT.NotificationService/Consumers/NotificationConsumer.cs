@@ -121,7 +121,7 @@ public sealed class NotificationConsumer(
 
             try
             {
-                await SendWithRetryAsync(notification, stoppingToken);
+                await DeliverWithRetryAsync(notification, stoppingToken);
                 await inbox.CompleteAsync(notification.MessageId, stoppingToken);
             }
             catch
@@ -156,7 +156,7 @@ public sealed class NotificationConsumer(
         }
     }
 
-    private async Task SendWithRetryAsync(
+    private async Task DeliverWithRetryAsync(
         BaseNotificationMessage notification,
         CancellationToken stoppingToken)
     {
@@ -164,6 +164,16 @@ public sealed class NotificationConsumer(
         {
             try
             {
+                if (await emailService.WasDeliveredAsync(
+                        notification.MessageId,
+                        stoppingToken))
+                {
+                    logger.LogWarning(
+                        "Notification message {MessageId} was already accepted by the email provider. Skipping duplicate delivery.",
+                        notification.MessageId);
+                    return;
+                }
+
                 await emailService.SendAsync(notification, stoppingToken);
                 return;
             }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using FixedIT.NotificationService.Configuration;
 using FixedIT.Shared.Messages;
 using MailKit.Net.Smtp;
@@ -9,11 +10,49 @@ using MimeKit;
 namespace FixedIT.NotificationService.Services;
 
 public sealed class EmailService(
+    IHttpClientFactory httpClientFactory,
     IOptions<SmtpOptions> options,
     ILogger<EmailService> logger) : IEmailService
 {
     private static readonly TimeZoneInfo BosniaTimeZone = ResolveBosniaTimeZone();
+    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
     private readonly SmtpOptions _options = options.Value;
+
+    public async Task<bool> WasDeliveredAsync(
+        Guid messageId,
+        CancellationToken cancellationToken)
+    {
+        var expectedMessageId = BuildMessageId(messageId);
+        var client = httpClientFactory.CreateClient(SmtpHttpClientNames.DeliveryStatus);
+        const int pageSize = 250;
+        var start = 0;
+
+        while (true)
+        {
+            using var response = await client.GetAsync(
+                $"api/v2/messages?start={start}&limit={pageSize}",
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
+            response.EnsureSuccessStatusCode();
+            await using var content = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var page = await JsonSerializer.DeserializeAsync<MailHogMessagesResponse>(
+                content,
+                SerializerOptions,
+                cancellationToken);
+
+            if (page?.Items.Any(message => message.HasMessageId(expectedMessageId)) == true)
+            {
+                return true;
+            }
+
+            var count = page?.Items.Count ?? 0;
+            start += count;
+            if (count == 0 || start >= page!.Total)
+            {
+                return false;
+            }
+        }
+    }
 
     public async Task SendAsync(
         BaseNotificationMessage notification,
@@ -29,7 +68,7 @@ public sealed class EmailService(
         message.To.Add(new MailboxAddress(
             notification.RecipientName,
             notification.RecipientEmail));
-        message.MessageId = $"<{notification.MessageId:D}@fixedit.local>";
+        message.MessageId = BuildMessageId(notification.MessageId);
 
         using var client = new SmtpClient();
         var socketOptions = _options.UseSsl
@@ -54,6 +93,35 @@ public sealed class EmailService(
             "Sent {MessageType} email for notification {MessageId}.",
             notification.GetType().Name,
             notification.MessageId);
+    }
+
+    private static string BuildMessageId(Guid messageId) => $"<{messageId:D}@fixedit.local>";
+
+    private sealed class MailHogMessagesResponse
+    {
+        public int Total { get; init; }
+
+        public List<MailHogMessage> Items { get; init; } = [];
+    }
+
+    private sealed class MailHogMessage
+    {
+        public MailHogContent Content { get; init; } = new();
+
+        public bool HasMessageId(string expectedMessageId)
+        {
+            return Content.Headers.Any(header =>
+                string.Equals(header.Key, "Message-ID", StringComparison.OrdinalIgnoreCase)
+                && header.Value.Any(value => string.Equals(
+                    value,
+                    expectedMessageId,
+                    StringComparison.OrdinalIgnoreCase)));
+        }
+    }
+
+    private sealed class MailHogContent
+    {
+        public Dictionary<string, string[]> Headers { get; init; } = [];
     }
 
     private static (string Subject, string Body) Format(BaseNotificationMessage notification)

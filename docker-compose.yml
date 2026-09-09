@@ -135,6 +135,8 @@ services:
       Smtp__UseSsl: "${SMTP_USE_SSL}"
       Smtp__FromAddress: "${SMTP_FROM_ADDRESS}"
       Smtp__FromName: "${SMTP_FROM_NAME}"
+      Smtp__DeliveryStatusApiBaseUrl: "${SMTP_DELIVERY_STATUS_API_BASE_URL}"
+      Smtp__DeliveryStatusApiTimeoutSeconds: "${SMTP_DELIVERY_STATUS_API_TIMEOUT_SECONDS}"
     restart: on-failure
     depends_on:
       sqlserver:
@@ -146,7 +148,16 @@ services:
 
   mailhog:
     image: mailhog/mailhog:v1.0.1
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "chown -R 1000:1000 /maildir && exec su mailhog -c MailHog"
     ports: ["1025:1025", "8025:8025"]
+    environment:
+      MH_STORAGE: maildir
+      MH_MAILDIR_PATH: /maildir
+    volumes:
+      - mailhogdata:/maildir
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025"]
       interval: 5s
@@ -156,3 +167,4 @@ services:
 volumes:
   sqldata:
   uploads:
+  mailhogdata:

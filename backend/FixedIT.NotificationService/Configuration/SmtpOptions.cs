@@ -24,4 +24,16 @@ public sealed class SmtpOptions
 
     [Required]
     public string FromName { get; set; } = string.Empty;
+
+    [Required]
+    [Url]
+    public string DeliveryStatusApiBaseUrl { get; set; } = string.Empty;
+
+    [Range(1, 60)]
+    public int DeliveryStatusApiTimeoutSeconds { get; set; }
+}
+
+public static class SmtpHttpClientNames
+{
+    public const string DeliveryStatus = "SmtpDeliveryStatus";
 }

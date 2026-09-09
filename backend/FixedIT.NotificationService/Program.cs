@@ -35,7 +35,23 @@ builder.Services
         options => string.IsNullOrWhiteSpace(options.Username)
             || !string.IsNullOrWhiteSpace(options.Password),
         "Smtp:Password je obavezan kada je Smtp:Username konfigurisan.")
+    .Validate(
+        options => Uri.TryCreate(
+                options.DeliveryStatusApiBaseUrl,
+                UriKind.Absolute,
+                out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+            && options.DeliveryStatusApiBaseUrl.EndsWith("/", StringComparison.Ordinal),
+        "Smtp:DeliveryStatusApiBaseUrl mora biti HTTP(S) adresa koja završava znakom '/'.")
     .ValidateOnStart();
+builder.Services.AddHttpClient(
+    SmtpHttpClientNames.DeliveryStatus,
+    (serviceProvider, client) =>
+    {
+        var options = serviceProvider.GetRequiredService<IOptions<SmtpOptions>>().Value;
+        client.BaseAddress = new Uri(options.DeliveryStatusApiBaseUrl, UriKind.Absolute);
+        client.Timeout = TimeSpan.FromSeconds(options.DeliveryStatusApiTimeoutSeconds);
+    });
 builder.Services.AddSingleton<IConnectionFactory>(serviceProvider =>
 {
     var options = serviceProvider.GetRequiredService<IOptions<RabbitMqOptions>>().Value;

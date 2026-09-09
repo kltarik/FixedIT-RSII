@@ -604,7 +604,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(token => token.CreatedAt).HasColumnType("datetime2");
             entity.Property(token => token.ExpiresAt).HasColumnType("datetime2");
             entity.Property(token => token.UsedAt).HasColumnType("datetime2");
-            entity.HasIndex(token => token.TokenHash).IsUnique();
             entity.HasIndex(token => new { token.UserId, token.ExpiresAt });
             entity.ToTable(table => table.HasCheckConstraint(
                 "CK_PasswordResetTokens_FailedAttempts",

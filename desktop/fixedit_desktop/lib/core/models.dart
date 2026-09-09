@@ -522,6 +522,19 @@ List<int> allowedNextReservationStatuses(int status) => switch (status) {
   _ => const [],
 };
 
+List<int> activeNextReservationStatuses(
+  int status,
+  Iterable<ReservationStatusRecord> statuses,
+) {
+  final activeStatusIds = statuses
+      .where((status) => status.isActive)
+      .map((status) => status.id)
+      .toSet();
+  return allowedNextReservationStatuses(
+    status,
+  ).where(activeStatusIds.contains).toList();
+}
+
 class AuditEntry {
   const AuditEntry({
     required this.id,

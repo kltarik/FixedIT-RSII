@@ -65,11 +65,14 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
   }
 
   Future<void> _changeStatus(ReservationRecord reservation) async {
+    final allowedStatuses = _activeTransitions(reservation.status);
+    if (allowedStatuses.isEmpty) return;
     final selection = await showDialog<_StatusSelection>(
       context: context,
       builder: (context) => _StatusDialog(
         reservation: reservation,
         statusNames: {for (final status in _statuses) status.id: status.name},
+        allowedStatuses: allowedStatuses,
       ),
     );
     if (selection == null) return;
@@ -106,6 +109,10 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
     } finally {
       if (mounted) setState(() => _busyId = null);
     }
+  }
+
+  List<int> _activeTransitions(int currentStatus) {
+    return activeNextReservationStatuses(currentStatus, _statuses);
   }
 
   Future<void> _pickDate(bool start) async {
@@ -328,7 +335,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
                                   : IconButton(
                                       tooltip: 'Promijeni status',
                                       onPressed:
-                                          allowedNextReservationStatuses(
+                                          _activeTransitions(
                                             reservation.status,
                                           ).isEmpty
                                           ? null
@@ -362,9 +369,14 @@ class _StatusSelection {
 }
 
 class _StatusDialog extends StatefulWidget {
-  const _StatusDialog({required this.reservation, required this.statusNames});
+  const _StatusDialog({
+    required this.reservation,
+    required this.statusNames,
+    required this.allowedStatuses,
+  });
   final ReservationRecord reservation;
   final Map<int, String> statusNames;
+  final List<int> allowedStatuses;
   @override
   State<_StatusDialog> createState() => _StatusDialogState();
 }
@@ -382,7 +394,6 @@ class _StatusDialogState extends State<_StatusDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final allowed = allowedNextReservationStatuses(widget.reservation.status);
     return AlertDialog(
       title: Text('Rezervacija #${widget.reservation.id}'),
       content: SizedBox(
@@ -395,7 +406,7 @@ class _StatusDialogState extends State<_StatusDialog> {
               DropdownButtonFormField<int>(
                 initialValue: _status,
                 decoration: const InputDecoration(labelText: 'Novi status'),
-                items: allowed
+                items: widget.allowedStatuses
                     .map(
                       (status) => DropdownMenuItem(
                         value: status,
